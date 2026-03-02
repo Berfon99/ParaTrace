@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Snowy TDD Task Analyser</title>
+<title>AIR³ TDD Task Analyser</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
@@ -190,7 +190,7 @@
 <header>
   <div>
     <div class="logo">Snowy TDD<span> Task Analyser</span></div>
-    <div class="tagline"><a href="https://www.fly-air3.com/" target="_blank" style="color:inherit;text-decoration:none;cursor:pointer;transition:color 0.2s" onmouseover="this.style.color='#00d4ff'" onmouseout="this.style.color=''">powered by AIR³</a></div>
+    <div class="tagline">powered by Snowy</div>
   </div>
 </header>
 
@@ -495,6 +495,7 @@ document.getElementById('igcInput').addEventListener('change', e => {
     // Reset XContest points when a new IGC is loaded
     document.getElementById('xcPtsManual').value = '';
     document.getElementById('xcPts').textContent = '—';
+    checkEnableAnalyze();
     document.getElementById('xcResult').classList.remove('visible');
     document.getElementById('xcError').style.display = 'none';
     checkEnableAnalyze();
@@ -573,7 +574,7 @@ document.getElementById('xcFetchBtn').addEventListener('click', fetchXContest);
 document.getElementById('xcUrl').addEventListener('keydown', e => { if(e.key==='Enter') fetchXContest(); });
 document.getElementById('xcManualOk').addEventListener('click', applyManualXcPoints);
 document.getElementById('xcPtsManual').addEventListener('keydown', e => { if(e.key==='Enter') applyManualXcPoints(); });
-document.getElementById('xcPtsManual').addEventListener('input', checkEnableAnalyze);
+// checkEnableAnalyze is called after applyManualXcPoints (OK/Enter) confirms the value
 
 async function fetchXContest() {
   const url    = document.getElementById('xcUrl').value.trim();
@@ -608,9 +609,10 @@ async function fetchXContest() {
     }
 
     if (pts) {
-      document.getElementById('xcPts').textContent = parseFloat(pts).toFixed(2) + ' pts';
+      document.getElementById('xcPts').textContent = parseFloat(pts).toFixed(2);
       document.getElementById('xcLink').href = url;
       resEl.classList.add('visible');
+      checkEnableAnalyze();
     } else {
       errEl.innerHTML = 'Points not found automatically.<br>Enter them manually below:';
       errEl.style.display='block';
@@ -624,17 +626,20 @@ async function fetchXContest() {
 
 function applyManualXcPoints() {
   const val = parseFloat(document.getElementById('xcPtsManual').value);
-  if (isNaN(val)) return;
+  if (isNaN(val) || val <= 0) return;
   const url = document.getElementById('xcUrl').value.trim();
-  document.getElementById('xcPts').textContent = val.toFixed(2) + ' pts';
+  document.getElementById('xcPts').textContent = val.toFixed(2);
   document.getElementById('xcLink').href = url || '#';
   document.getElementById('xcResult').classList.add('visible');
   document.getElementById('xcError').style.display='none';
+  checkEnableAnalyze();
 }
 
 // ── ANALYSE ───────────────────────────────────────────────────────────────────
 function checkEnableAnalyze() {
-  const xcVal = parseFloat(document.getElementById('xcPtsManual').value);
+  // xcPts is only "confirmed" when displayed in the result box (after OK or Enter)
+  const xcDisplay = document.getElementById('xcPts').textContent.trim();
+  const xcVal = parseFloat(xcDisplay);
   const xcOk  = !isNaN(xcVal) && xcVal > 0;
   document.getElementById('analyzeBtn').disabled = !(taskData && igcPoints.length && xcOk);
 }
