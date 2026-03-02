@@ -232,6 +232,18 @@
     </div>
 
     <div>
+      <div class="section-title">🏁 Competition Name</div>
+      <div class="xcontest-section">
+        <div class="input-row">
+          <input class="xc-input" id="compName" type="text" placeholder="Auto-filled from waypoints…" style="flex:1">
+        </div>
+        <div style="font-size:0.58rem;color:rgba(200,223,240,0.35);line-height:1.4">
+          Edit to distinguish competitions on the same day.
+        </div>
+      </div>
+    </div>
+
+    <div>
       <div class="section-title">🎯 Waypoints</div>
       <div class="waypoints-list" id="waypointsList">
         <div class="empty-state">No task loaded</div>
@@ -423,6 +435,17 @@ function renderTask(task) {
       </div>`;
   });
   if (bounds.length) map.fitBounds(bounds, {padding:[60,60]});
+
+  // Auto-fill competition name from waypoint names + radii
+  const wpSummary = task.waypoints
+    .filter(w => w.type !== 'TAKEOFF')
+    .map(w => `${w.name}(${w.radius}m)`)
+    .join(' · ');
+  const compInput = document.getElementById('compName');
+  if (compInput && (!compInput.value || compInput.dataset.autoFilled === 'true')) {
+    compInput.value = wpSummary;
+    compInput.dataset.autoFilled = 'true';
+  }
 }
 
 // ── TASK URL LOADER ──────────────────────────────────────────────────────────
@@ -590,6 +613,9 @@ document.getElementById('xcUrl').addEventListener('keydown', e => { if(e.key==='
 document.getElementById('xcManualOk').addEventListener('click', applyManualXcPoints);
 document.getElementById('xcPtsManual').addEventListener('keydown', e => { if(e.key==='Enter') applyManualXcPoints(); });
 // checkEnableAnalyze is called after applyManualXcPoints (OK/Enter) confirms the value
+document.getElementById('compName').addEventListener('input', () => {
+  document.getElementById('compName').dataset.autoFilled = 'false';
+});
 
 async function fetchXContest() {
   const url    = document.getElementById('xcUrl').value.trim();
@@ -819,7 +845,8 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
               : (!isNaN(displayVal) && displayVal > 0) ? displayVal
               : null;
 
-  const entry = { name, date, trackPts, xcPts, xcUrl, submittedAt: new Date().toISOString() };
+  const compName = document.getElementById('compName').value.trim() || 'Unknown Competition';
+  const entry = { name, date, compName, trackPts, xcPts, xcUrl, submittedAt: new Date().toISOString() };
 
   try {
     const btn = document.getElementById('submitBtn');
@@ -827,7 +854,7 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
     btn.disabled = true;
 
     // Use pilot name as document ID so re-submit overwrites previous entry
-    const docId = name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    const docId = (compName + '_' + name).toLowerCase().replace(/[^a-z0-9]+/g, '_');
     await window.db.collection('scores').doc(docId).set(entry);
 
     window.location.href = 'score.html';
