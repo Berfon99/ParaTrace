@@ -279,8 +279,8 @@ async function renderScores() {
     html += `<div class="date-group">
       <div class="date-header" style="justify-content:space-between">
         <span>📅 ${date} &nbsp;·&nbsp; 🏁 ${compName}</span>
-        <button class="tool-btn" style="font-size:0.55rem;padding:0.2rem 0.5rem;margin-left:1rem"
-          onclick="clearGroup(${JSON.stringify(groupDocIds).replace(/"/g, '&quot;')})">🗑 Clear</button>
+        <button class="tool-btn clear-group-btn" style="font-size:0.55rem;padding:0.2rem 0.5rem;margin-left:1rem"
+          data-docids="${groupDocIds.join('|')}">🗑 Clear</button>
       </div>
       <table class="score-table">
         <thead>
@@ -355,6 +355,27 @@ async function renderScores() {
 
 // Render on load
 renderScores();
+
+// Event delegation for clear buttons (works even after DOM is re-rendered)
+document.getElementById('scoresContainer').addEventListener('click', async (e) => {
+  const btn = e.target.closest('.clear-group-btn');
+  if (!btn) return;
+  const docIds = btn.dataset.docids.split('|').filter(Boolean);
+  if (!docIds.length) return;
+  if (!confirm(`Delete ${docIds.length} score(s) for this competition? This cannot be undone.`)) return;
+  btn.textContent = '⏳';
+  btn.disabled = true;
+  try {
+    const batch = window.db.batch();
+    docIds.forEach(id => batch.delete(window.db.collection('scores').doc(id)));
+    await batch.commit();
+    renderScores();
+  } catch(err) {
+    alert('Error: ' + err.message);
+    btn.textContent = '🗑 Clear';
+    btn.disabled = false;
+  }
+});
 </script>
 <footer style="
   text-align:center;
