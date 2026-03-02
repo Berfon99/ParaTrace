@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Snowy TDD Task Analyser · Scores</title>
+<title>AIR³ TDD Task Analyser · Scores</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
 
@@ -147,7 +147,7 @@
 <header>
   <div>
     <div class="logo">Snowy TDD<span> Task Analyser</span></div>
-    <div class="tagline"><a href="https://www.fly-air3.com/" target="_blank" style="color:inherit;text-decoration:none;cursor:pointer;transition:color 0.2s" onmouseover="this.style.color='#00d4ff'" onmouseout="this.style.color=''">powered by AIR³</a></div>
+    <div class="tagline">powered by Snowy</div>
   </div>
   <a href="index.html" class="back-btn">← Back to Analyzer</a>
 </header>
@@ -335,5 +335,24 @@ document.getElementById('clearAllBtn').addEventListener('click', () => {
 // Render on load
 renderScores();
 </script>
+<footer style="
+  text-align:center;
+  padding:1.5rem 2rem;
+  border-top:1px solid rgba(0,212,255,0.1);
+  margin-top:2rem;
+">
+  <a href="https://www.fly-air3.com/" target="_blank" style="
+    font-family:'Syne',sans-serif;
+    font-size:0.75rem;
+    font-weight:700;
+    letter-spacing:0.15em;
+    text-transform:uppercase;
+    color:rgba(200,223,240,0.3);
+    text-decoration:none;
+    transition:color 0.2s;
+  " onmouseover="this.style.color='#00d4ff'" onmouseout="this.style.color='rgba(200,223,240,0.3)'">
+    ⚡ Powered by Snowy
+  </a>
+</footer>
 </body>
 </html>
