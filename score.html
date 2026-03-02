@@ -171,9 +171,7 @@
   <div class="page-title">🏅 TDD Score Board</div>
   <div class="page-sub">Results by date · Updated on each submission</div>
 
-  <div class="toolbar">
-    <button class="tool-btn" id="clearAllBtn">🗑 Clear all scores</button>
-  </div>
+  <div class="toolbar" id="toolbar"></div>
 
   <div id="scoresContainer">
     <div class="empty-state">
@@ -191,12 +189,12 @@ async function loadScores() {
   return snapshot.docs.map(doc => doc.data());
 }
 
-function groupByDate(entries) {
+function groupByCompAndDate(entries) {
   const groups = {};
   entries.forEach(e => {
-    const date = e.date || 'Unknown date';
-    if (!groups[date]) groups[date] = [];
-    groups[date].push(e);
+    const key = (e.compName || 'Unknown Competition') + '||' + (e.date || 'Unknown date');
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(e);
   });
   return groups;
 }
@@ -257,7 +255,7 @@ async function renderScores() {
     // Best XContest score in this group (for rule of 3)
     const bestXc = Math.max(0, ...pilots.map(p => parsePoints(p.xcPts) || 0));
 
-    // Sort by total score desc
+    // Sort by total score desc within this competition group
     pilots.sort((a, b) => {
       const xcA = parsePoints(a.xcPts) || 0;
       const xcB = parsePoints(b.xcPts) || 0;
@@ -268,8 +266,17 @@ async function renderScores() {
       return totalB - totalA;
     });
 
+    // Collect doc IDs for this group (for targeted delete)
+    const groupDocIds = pilots.map(p =>
+      ((p.compName || 'Unknown Competition') + '_' + p.name).toLowerCase().replace(/[^a-z0-9]+/g, '_')
+    );
+
     html += `<div class="date-group">
-      <div class="date-header">${date}</div>
+      <div class="date-header" style="justify-content:space-between">
+        <span>📅 ${date} &nbsp;·&nbsp; 🏁 ${compName}</span>
+        <button class="tool-btn" style="font-size:0.55rem;padding:0.2rem 0.5rem;margin-left:1rem"
+          onclick="clearGroup(${JSON.stringify(groupDocIds)})">🗑 Clear</button>
+      </div>
       <table class="score-table">
         <thead>
           <tr>
@@ -335,18 +342,19 @@ async function renderScores() {
   container.innerHTML = html;
 }
 
-document.getElementById('clearAllBtn').addEventListener('click', async () => {
-  if (!confirm('Delete all submitted scores? This cannot be undone.')) return;
+async function clearGroup(docIds) {
+  if (!confirm(`Delete ${docIds.length} score(s) for this competition? This cannot be undone.`)) return;
   try {
-    const snapshot = await window.db.collection('scores').get();
     const batch = window.db.batch();
-    snapshot.docs.forEach(doc => batch.delete(doc.ref));
+    docIds.forEach(id => {
+      batch.delete(window.db.collection('scores').doc(id));
+    });
     await batch.commit();
     renderScores();
   } catch(err) {
     alert('Error clearing scores: ' + err.message);
   }
-});
+}
 
 // Render on load
 renderScores();
