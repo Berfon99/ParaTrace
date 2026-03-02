@@ -489,6 +489,11 @@ document.getElementById('igcInput').addEventListener('change', e => {
     renderPilot(parseIGCHeader(content));
     document.getElementById('igcBadge').innerHTML =
       `<div class="file-badge">✓ ${file.name} · ${igcPoints.length} GPS pts</div>`;
+    // Reset XContest points when a new IGC is loaded
+    document.getElementById('xcPtsManual').value = '';
+    document.getElementById('xcPts').textContent = '—';
+    document.getElementById('xcResult').classList.remove('visible');
+    document.getElementById('xcError').style.display = 'none';
     checkEnableAnalyze();
   };
   reader.readAsText(file);
@@ -564,6 +569,7 @@ function renderIGC(points) {
 document.getElementById('xcFetchBtn').addEventListener('click', fetchXContest);
 document.getElementById('xcUrl').addEventListener('keydown', e => { if(e.key==='Enter') fetchXContest(); });
 document.getElementById('xcManualOk').addEventListener('click', applyManualXcPoints);
+document.getElementById('xcPtsManual').addEventListener('keydown', e => { if(e.key==='Enter') applyManualXcPoints(); });
 
 async function fetchXContest() {
   const url    = document.getElementById('xcUrl').value.trim();
@@ -702,6 +708,7 @@ function analyze() {
     html += `<div class="score-item ${goalPassed?'passed':'failed'}"><span>Goal — ${goal.name}</span><span class="score-pts">${goalPassed?'+200':'+0'}</span></div>`;
   }
 
+  window._lastTrackPts = total;
   document.getElementById('scoreTotal').textContent = total;
   document.getElementById('scoreBreakdown').innerHTML = html;
 
@@ -772,34 +779,28 @@ function updateSummaryButtons() {
 }
 
 document.getElementById('submitBtn').addEventListener('click', () => {
-  const name     = document.getElementById('summaryName').textContent.trim();
-  const date     = document.getElementById('summaryDate').textContent.trim();
-  const xcUrl    = document.getElementById('xcUrl').value.trim();
+  const name = document.getElementById('summaryName').textContent.trim();
+  const date = document.getElementById('summaryDate').textContent.trim().replace('📅 ', '');
+  const xcUrl = document.getElementById('xcUrl').value.trim();
 
-  if (!name || name === '—') {
-    showSubmitMsg('No pilot name found. Load an IGC file first.', false); return;
-  }
+  if (!name || name === '—') { alert('No pilot name found. Load an IGC file first.'); return; }
 
-  // Track points: extract raw number from "300 pts"
-  const trackPtsRaw = document.getElementById('summaryTrackPts').textContent.trim();
-  const trackPts = parseFloat(trackPtsRaw.replace(/[^\d.]/g, '')) || 0;
+  // Track points — stored as number by updateSummary, read from data attribute
+  const trackPts = window._lastTrackPts || 0;
 
-  // XContest points: get from manual input field directly (most reliable)
-  const xcManual = parseFloat(document.getElementById('xcPtsManual').value);
-  // Also try reading from the displayed xcPts element as fallback
-  const xcPtsDisplay = document.getElementById('xcPts').textContent.trim();
-  const xcPtsFromDisplay = parseFloat(xcPtsDisplay.replace(/[^\d.]/g, ''));
-  const xcPts = !isNaN(xcManual) && xcManual > 0 ? xcManual 
-              : !isNaN(xcPtsFromDisplay) && xcPtsFromDisplay > 0 ? xcPtsFromDisplay 
+  // XContest points — prefer manual field, then displayed value
+  const manualVal = parseFloat(document.getElementById('xcPtsManual').value);
+  const displayVal = parseFloat(document.getElementById('xcPts').textContent);
+  const xcPts = (!isNaN(manualVal) && manualVal > 0) ? manualVal
+              : (!isNaN(displayVal) && displayVal > 0) ? displayVal
               : null;
 
-  // Key = pilot name (upsert — replaces previous entry for same pilot)
-  const key = 'paratrace_pilot_' + name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+  const key = 'paratrace_pilot_' + name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
   const entry = { name, date, trackPts, xcPts, xcUrl, submittedAt: new Date().toISOString() };
-  console.log('Submitting entry:', entry);
+  console.log('Submitting:', entry);
   localStorage.setItem(key, JSON.stringify(entry));
 
-  showSubmitMsg('✓ Score submitted! Previous entry replaced if exists.', true);
+  window.location.href = 'score.html';
 });
 
 function showSubmitMsg(msg, ok) {
