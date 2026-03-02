@@ -774,18 +774,29 @@ function updateSummaryButtons() {
 document.getElementById('submitBtn').addEventListener('click', () => {
   const name     = document.getElementById('summaryName').textContent.trim();
   const date     = document.getElementById('summaryDate').textContent.trim();
-  const trackPts = document.getElementById('summaryTrackPts').textContent.trim();
-  const xcPtsEl  = document.getElementById('xcPts');
-  const xcPts    = xcPtsEl.textContent.trim() === '—' ? '' : xcPtsEl.textContent.trim();
   const xcUrl    = document.getElementById('xcUrl').value.trim();
 
   if (!name || name === '—') {
     showSubmitMsg('No pilot name found. Load an IGC file first.', false); return;
   }
 
+  // Track points: extract raw number from "300 pts"
+  const trackPtsRaw = document.getElementById('summaryTrackPts').textContent.trim();
+  const trackPts = parseFloat(trackPtsRaw.replace(/[^\d.]/g, '')) || 0;
+
+  // XContest points: get from manual input field directly (most reliable)
+  const xcManual = parseFloat(document.getElementById('xcPtsManual').value);
+  // Also try reading from the displayed xcPts element as fallback
+  const xcPtsDisplay = document.getElementById('xcPts').textContent.trim();
+  const xcPtsFromDisplay = parseFloat(xcPtsDisplay.replace(/[^\d.]/g, ''));
+  const xcPts = !isNaN(xcManual) && xcManual > 0 ? xcManual 
+              : !isNaN(xcPtsFromDisplay) && xcPtsFromDisplay > 0 ? xcPtsFromDisplay 
+              : null;
+
   // Key = pilot name (upsert — replaces previous entry for same pilot)
-  const key = 'paratrace_pilot_' + name.toLowerCase().replace(/\s+/g,'_');
+  const key = 'paratrace_pilot_' + name.toLowerCase().replace(/[^a-z0-9]/g, '_');
   const entry = { name, date, trackPts, xcPts, xcUrl, submittedAt: new Date().toISOString() };
+  console.log('Submitting entry:', entry);
   localStorage.setItem(key, JSON.stringify(entry));
 
   showSubmitMsg('✓ Score submitted! Previous entry replaced if exists.', true);
