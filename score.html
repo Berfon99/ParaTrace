@@ -186,7 +186,12 @@
 <script>
 async function loadScores() {
   const snapshot = await window.db.collection('scores').get();
-  return snapshot.docs.map(doc => doc.data());
+  return snapshot.docs.map(doc => {
+    const data = doc.data();
+    // Always use the real Firestore document ID (most reliable)
+    data._firestoreId = doc.id;
+    return data;
+  });
 }
 
 function groupByCompAndDate(entries) {
@@ -272,7 +277,8 @@ async function renderScores() {
     });
 
     // Doc IDs for this group (for targeted delete)
-    const groupDocIds = pilots.map(p =>
+    // Use real Firestore doc ID stored in _firestoreId (most reliable)
+    const groupDocIds = pilots.map(p => p._firestoreId || p.docId || 
       ((p.compName || 'Unknown Competition') + '_' + p.name).toLowerCase().replace(/[^a-z0-9]+/g, '_')
     );
 
