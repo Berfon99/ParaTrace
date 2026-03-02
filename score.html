@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snowy TDD Task Analyser · Scores</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --sky: #0a1628; --horizon: #0d2444; --cloud: #e8f4fd;
+    --accent: #00d4ff; --gold: #ffd700; --green: #00cc44;
+    --orange: #ff8c00; --blue: #4488ff; --red: #ff4757;
+    --text: #c8dff0; --panel: rgba(13,36,68,0.97);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--sky); color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+  }
+
+  header {
+    background: linear-gradient(135deg, #061018 0%, var(--horizon) 100%);
+    padding: 0.9rem 2rem; display: flex; align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(0,212,255,0.2);
+    box-shadow: 0 4px 30px rgba(0,0,0,0.5);
+  }
+
+  .logo { font-family:'Syne',sans-serif; font-weight:800; font-size:1.4rem; color:var(--accent); }
+  .logo span { color: var(--gold); }
+  .tagline { font-size:0.62rem; color:rgba(200,223,240,0.4); letter-spacing:0.1em; text-transform:uppercase; }
+
+  .back-btn {
+    display:inline-flex; align-items:center; gap:0.4rem;
+    background:rgba(0,212,255,0.1); border:1px solid rgba(0,212,255,0.25);
+    border-radius:6px; padding:0.45rem 0.8rem;
+    color:var(--accent); text-decoration:none;
+    font-family:'Space Mono',monospace; font-size:0.65rem; font-weight:700;
+    letter-spacing:0.05em; transition:all 0.2s;
+  }
+  .back-btn:hover { background:rgba(0,212,255,0.2); }
+
+  main { flex:1; padding:2rem; max-width:1100px; margin:0 auto; width:100%; }
+
+  .page-title {
+    font-family:'Syne',sans-serif; font-size:1.6rem; font-weight:800;
+    color:var(--cloud); margin-bottom:0.3rem;
+  }
+  .page-sub { font-size:0.65rem; color:rgba(200,223,240,0.4); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:2rem; }
+
+  /* Date group */
+  .date-group { margin-bottom:2rem; }
+  .date-header {
+    font-family:'Syne',sans-serif; font-size:0.75rem; font-weight:700;
+    color:var(--accent); letter-spacing:0.12em; text-transform:uppercase;
+    padding:0.5rem 0; border-bottom:1px solid rgba(0,212,255,0.2);
+    margin-bottom:0.8rem; display:flex; align-items:center; gap:0.6rem;
+  }
+  .date-header::before { content:'📅'; font-size:0.9rem; }
+
+  /* Table */
+  .score-table { width:100%; border-collapse:collapse; }
+
+  .score-table thead tr {
+    background:rgba(0,212,255,0.06);
+  }
+  .score-table th {
+    font-size:0.6rem; letter-spacing:0.1em; text-transform:uppercase;
+    color:rgba(200,223,240,0.5); padding:0.6rem 1rem; text-align:left;
+    border-bottom:1px solid rgba(0,212,255,0.15); font-weight:700;
+  }
+  .score-table th.right { text-align:right; }
+
+  .score-table tbody tr {
+    border-bottom:1px solid rgba(255,255,255,0.04);
+    transition:background 0.15s;
+  }
+  .score-table tbody tr:hover { background:rgba(255,255,255,0.03); }
+
+  .score-table td {
+    padding:0.75rem 1rem; font-size:0.72rem; vertical-align:middle;
+  }
+
+  .rank {
+    font-family:'Syne',sans-serif; font-weight:800; font-size:0.9rem;
+    color:rgba(200,223,240,0.25); width:40px;
+  }
+  .rank.gold   { color:var(--gold); }
+  .rank.silver { color:#aaa; }
+  .rank.bronze { color:#cd7f32; }
+
+  .pilot-name {
+    font-family:'Syne',sans-serif; font-weight:700; font-size:0.85rem;
+    color:var(--cloud);
+  }
+  .xc-link-cell a {
+    color:var(--accent); text-decoration:none; font-size:0.62rem;
+    opacity:0.7; transition:opacity 0.15s;
+  }
+  .xc-link-cell a:hover { opacity:1; }
+
+  .pts-cell { text-align:right; }
+  .pts-track {
+    font-family:'Syne',sans-serif; font-weight:700; font-size:1rem;
+    color:var(--orange);
+  }
+  .pts-xc {
+    font-family:'Syne',sans-serif; font-weight:700; font-size:1rem;
+    color:var(--accent);
+  }
+  .pts-total {
+    font-family:'Syne',sans-serif; font-weight:800; font-size:1.05rem;
+    color:var(--gold);
+  }
+  .pts-computed {
+    font-family:'Syne',sans-serif; font-weight:700; font-size:1rem;
+    color:var(--gold);
+  }
+  .pts-na { color:rgba(200,223,240,0.2); font-size:0.65rem; }
+
+  .empty-state {
+    text-align:center; padding:4rem 2rem;
+    color:rgba(200,223,240,0.3); font-size:0.8rem; line-height:2;
+  }
+  .empty-icon { font-size:3rem; display:block; margin-bottom:1rem; opacity:0.4; }
+
+  .toolbar {
+    display:flex; justify-content:flex-end; gap:0.6rem; margin-bottom:1.5rem;
+  }
+  .tool-btn {
+    background:rgba(255,71,87,0.1); border:1px solid rgba(255,71,87,0.25);
+    border-radius:6px; padding:0.4rem 0.8rem; color:var(--red);
+    font-family:'Space Mono',monospace; font-size:0.62rem; font-weight:700;
+    cursor:pointer; letter-spacing:0.05em; transition:all 0.2s;
+  }
+  .tool-btn:hover { background:rgba(255,71,87,0.2); }
+
+  .submitted-at { font-size:0.55rem; color:rgba(200,223,240,0.25); margin-top:0.1rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">Snowy TDD<span> Task Analyser</span></div>
+    <div class="tagline">powered by AIR³</div>
+  </div>
+  <a href="index.html" class="back-btn">← Back to Analyzer</a>
+</header>
+
+<main>
+  <div class="page-title">🏅 TDD Score Board</div>
+  <div class="page-sub">Results by date · Updated on each submission</div>
+
+  <div class="toolbar">
+    <button class="tool-btn" id="clearAllBtn">🗑 Clear all scores</button>
+  </div>
+
+  <div id="scoresContainer">
+    <div class="empty-state">
+      <span class="empty-icon">🪂</span>
+      No scores submitted yet.<br>
+      Go back to the analyzer, load a task + IGC track,<br>
+      run the analysis and click <b>Submit</b>.
+    </div>
+  </div>
+</main>
+
+<script>
+function loadScores() {
+  const entries = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key.startsWith('paratrace_pilot_')) continue;
+    try {
+      const e = JSON.parse(localStorage.getItem(key));
+      entries.push(e);
+    } catch(err) {}
+  }
+  return entries;
+}
+
+function groupByDate(entries) {
+  const groups = {};
+  entries.forEach(e => {
+    const date = e.date || 'Unknown date';
+    if (!groups[date]) groups[date] = [];
+    groups[date].push(e);
+  });
+  return groups;
+}
+
+function parsePoints(str) {
+  if (!str) return null;
+  const n = parseFloat(str.replace(/[^\d.]/g, ''));
+  return isNaN(n) ? null : n;
+}
+
+function rankClass(i) {
+  if (i === 0) return 'gold';
+  if (i === 1) return 'silver';
+  if (i === 2) return 'bronze';
+  return '';
+}
+
+function renderScores() {
+  const container = document.getElementById('scoresContainer');
+  const entries   = loadScores();
+
+  if (!entries.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <span class="empty-icon">🪂</span>
+        No scores submitted yet.<br>
+        Go back to the analyzer, load a task + IGC track,<br>
+        run the analysis and click <b>Submit</b>.
+      </div>`;
+    return;
+  }
+
+  // Sort entries by date desc, then by track points desc within each date
+  entries.sort((a, b) => {
+    const da = a.date || '', db = b.date || '';
+    const parseDate = d => {
+      const p = d.split('/');
+      return p.length === 3 ? new Date(`${p[2]}-${p[1]}-${p[0]}`) : new Date(0);
+    };
+    return parseDate(db) - parseDate(da);
+  });
+
+  const groups = groupByDate(entries);
+  let html = '';
+
+  for (const [date, pilots] of Object.entries(groups)) {
+    // Sort pilots within date by track points desc
+    pilots.sort((a, b) => (parsePoints(b.trackPts) || 0) - (parsePoints(a.trackPts) || 0));
+
+    html += `<div class="date-group">
+      <div class="date-header">${date}</div>
+      <table class="score-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Pilot</th>
+            <th>XContest</th>
+            <th class="right">Track Points</th>
+            <th class="right">XContest Pts</th>
+            <th class="right">Computed XC Pts<br><span style="font-size:0.5rem;opacity:0.6">max 500 pts</span></th>
+            <th class="right">Total Score</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+    pilots.forEach((p, i) => {
+      const trackPts    = parsePoints(p.trackPts);
+      const xcPts       = parsePoints(p.xcPts);
+      const submittedAt = p.submittedAt ? new Date(p.submittedAt).toLocaleString() : '';
+
+      const trackCell = trackPts !== null
+        ? `<span class="pts-track">${trackPts}</span>`
+        : `<span class="pts-na">—</span>`;
+
+      const xcCell = xcPts !== null
+        ? `<span class="pts-xc">${xcPts.toFixed(2)}</span>`
+        : `<span class="pts-na">—</span>`;
+
+      // Computed Tracklog Points — placeholder for future formula
+      const computedCell = `<span class="pts-computed">—</span>`;
+
+      const xcLinkCell = p.xcUrl
+        ? `<a href="${p.xcUrl}" target="_blank">View ↗</a>`
+        : `<span class="pts-na">—</span>`;
+
+      html += `<tr>
+        <td class="rank ${rankClass(i)}">${i+1}</td>
+        <td>
+          <div class="pilot-name">${p.name}</div>
+          <div class="submitted-at">${submittedAt}</div>
+        </td>
+        <td class="xc-link-cell">${xcLinkCell}</td>
+        <td class="pts-cell">${trackCell}</td>
+        <td class="pts-cell">${xcCell}</td>
+        <td class="pts-cell">${computedCell}</td>
+      </tr>`;
+    });
+
+    html += `</tbody></table></div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+document.getElementById('clearAllBtn').addEventListener('click', () => {
+  if (!confirm('Delete all submitted scores? This cannot be undone.')) return;
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    if (localStorage.key(i).startsWith('paratrace_pilot_')) keys.push(localStorage.key(i));
+  }
+  keys.forEach(k => localStorage.removeItem(k));
+  renderScores();
+});
+
+// Render on load
+renderScores();
+</script>
+</body>
+</html>
