@@ -749,12 +749,13 @@ function analyze() {
 
   // 3. GOAL must be passed after the LAST validated TP
   let goalPassed = false;
+  let goalValidatedIdx = -1; // IGC index where goal is validly reached (after all TPs)
   if (sssPassed && goal) {
     // IGC index of last validated TP
     let lastTpIGC = sssIdx;
     tpIdxIGC.forEach(idx => { if (idx > lastTpIGC) lastTpIGC = idx; });
     for (let i=lastTpIGC; i<igcPoints.length; i++) {
-      if (inCyl(igcPoints[i], goal)) { goalPassed=true; break; }
+      if (inCyl(igcPoints[i], goal)) { goalPassed=true; goalValidatedIdx=i; break; }
     }
   }
 
@@ -831,26 +832,17 @@ function analyze() {
     violations.push(`Flight ended at ${fh}:${fm} UTC, after the task deadline of ${dh}:${dm} UTC`);
   }
 
-  // 2. Check flight did not continue significantly after goal
-  if (goalPassed && goal) {
-    // Find the index where goal was first validated
-    let goalIdx = -1;
-    const goalSearchFrom = (typeof lastTpIGC !== 'undefined' && lastTpIGC > 0) ? lastTpIGC : (sssIdx > 0 ? sssIdx : 0);
-    for (let i = goalSearchFrom; i < igcPoints.length; i++) {
-      if (inCyl(igcPoints[i], goal)) { goalIdx = i; break; }
-    }
-    if (goalIdx !== -1) {
-      // Check if pilot exited the goal cylinder after entering it
-      let exitedGoal = false;
-      for (let i = goalIdx + 1; i < igcPoints.length; i++) {
-        if (!inCyl(igcPoints[i], goal)) {
-          exitedGoal = true;
-          const exitTime = igcPoints[i].time;
-          const eh = Math.floor(exitTime / 3600).toString().padStart(2,'0');
-          const em = Math.floor((exitTime % 3600) / 60).toString().padStart(2,'0');
-          violations.push(`Flight exited the Goal cylinder at ${eh}:${em} UTC`);
-          break;
-        }
+  // 2. Check flight did not exit goal cylinder after validly reaching it
+  // goalValidatedIdx = index where goal was reached AFTER all TPs
+  // Any earlier passage through the goal cylinder (before all TPs) is ignored
+  if (goalPassed && goal && goalValidatedIdx !== -1) {
+    for (let i = goalValidatedIdx + 1; i < igcPoints.length; i++) {
+      if (!inCyl(igcPoints[i], goal)) {
+        const exitTime = igcPoints[i].time;
+        const eh = Math.floor(exitTime / 3600).toString().padStart(2,'0');
+        const em = Math.floor((exitTime % 3600) / 60).toString().padStart(2,'0');
+        violations.push(`Flight exited the Goal cylinder at ${eh}:${em} UTC`);
+        break;
       }
     }
   }
