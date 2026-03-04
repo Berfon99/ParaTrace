@@ -823,14 +823,17 @@ function analyze() {
       if (inCyl(igcPoints[i], goal)) { goalIdx = i; break; }
     }
     if (goalIdx !== -1) {
-      // Check if flight continued more than 2 minutes after goal
-      const goalTime = igcPoints[goalIdx].time;
-      const lastTime = igcPoints[igcPoints.length - 1].time;
-      // Handle midnight crossing (time wraps around)
-      const extraSeconds = lastTime >= goalTime ? lastTime - goalTime : (86400 - goalTime) + lastTime;
-      if (extraSeconds > 120) {
-        const extraMin = Math.round(extraSeconds / 60);
-        violations.push(`Flight continued ${extraMin} min after reaching Goal`);
+      // Check if pilot exited the goal cylinder after entering it
+      let exitedGoal = false;
+      for (let i = goalIdx + 1; i < igcPoints.length; i++) {
+        if (!inCyl(igcPoints[i], goal)) {
+          exitedGoal = true;
+          const exitTime = igcPoints[i].time;
+          const eh = Math.floor(exitTime / 3600).toString().padStart(2,'0');
+          const em = Math.floor((exitTime % 3600) / 60).toString().padStart(2,'0');
+          violations.push(`Flight exited the Goal cylinder at ${eh}:${em} UTC`);
+          break;
+        }
       }
     }
   }
