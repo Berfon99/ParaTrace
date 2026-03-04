@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIR³ TDD Task Analyser · Rules</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --sky: #0a1628; --horizon: #0d2444; --cloud: #e8f4fd;
+    --accent: #00d4ff; --gold: #ffd700; --green: #00cc44;
+    --orange: #ff8c00; --text: #c8dff0; --panel: rgba(13,36,68,0.97);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--sky); color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh; display: flex; flex-direction: column;
+  }
+
+  header {
+    background: linear-gradient(135deg, #061018 0%, var(--horizon) 100%);
+    padding: 0.9rem 2rem; display: flex; align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(0,212,255,0.2);
+    box-shadow: 0 4px 30px rgba(0,0,0,0.5);
+  }
+
+  .logo-wrap { display:flex; flex-direction:column; }
+  .logo { font-family:'Syne',sans-serif; font-weight:800; font-size:1.4rem; color:var(--accent); }
+  .logo span { color: var(--gold); }
+  .tagline { font-size:0.62rem; color:rgba(200,223,240,0.4); letter-spacing:0.1em; text-transform:uppercase; }
+
+  .nav-btns { display:flex; gap:0.6rem; align-items:center; }
+
+  .nav-btn {
+    display:inline-flex; align-items:center; gap:0.4rem;
+    border-radius:6px; padding:0.45rem 0.9rem;
+    font-family:'Space Mono',monospace; font-size:0.65rem; font-weight:700;
+    letter-spacing:0.05em; text-decoration:none; transition:all 0.2s;
+  }
+  .btn-blue {
+    background:rgba(0,212,255,0.1); border:1px solid rgba(0,212,255,0.25); color:var(--accent);
+  }
+  .btn-blue:hover { background:rgba(0,212,255,0.2); }
+  .btn-gold {
+    background:rgba(255,215,0,0.1); border:1px solid rgba(255,215,0,0.3); color:var(--gold);
+  }
+  .btn-gold:hover { background:rgba(255,215,0,0.2); }
+
+  main {
+    flex:1; padding:3rem 2rem; max-width:800px; margin:0 auto; width:100%;
+  }
+
+  .page-title {
+    font-family:'Syne',sans-serif; font-size:1.8rem; font-weight:800;
+    color:var(--cloud); margin-bottom:0.3rem;
+  }
+  .page-sub {
+    font-size:0.62rem; color:rgba(200,223,240,0.35);
+    letter-spacing:0.1em; text-transform:uppercase; margin-bottom:2.5rem;
+  }
+
+  .rule-section {
+    margin-bottom:2rem;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(0,212,255,0.1);
+    border-radius:10px; padding:1.5rem;
+  }
+
+  .rule-section-title {
+    font-family:'Syne',sans-serif; font-size:0.75rem; font-weight:700;
+    color:var(--accent); letter-spacing:0.12em; text-transform:uppercase;
+    margin-bottom:1rem; padding-bottom:0.6rem;
+    border-bottom:1px solid rgba(0,212,255,0.15);
+    display:flex; align-items:center; gap:0.5rem;
+  }
+
+  .rule-item {
+    display:flex; gap:1rem; margin-bottom:0.9rem; line-height:1.7;
+    font-size:0.72rem; color:rgba(200,223,240,0.8);
+  }
+  .rule-item:last-child { margin-bottom:0; }
+
+  .rule-num {
+    font-family:'Syne',sans-serif; font-weight:800; font-size:0.9rem;
+    color:var(--gold); flex-shrink:0; width:1.5rem; text-align:right;
+    padding-top:0.05rem;
+  }
+
+  .rule-text b { color:var(--cloud); }
+  .rule-text .highlight {
+    background:rgba(0,212,255,0.1); border:1px solid rgba(0,212,255,0.2);
+    border-radius:4px; padding:0.1rem 0.4rem; color:var(--accent);
+    font-size:0.68rem;
+  }
+
+  .scoring-grid {
+    display:grid; grid-template-columns:1fr 1fr 1fr;
+    gap:0.6rem; margin-top:0.5rem;
+  }
+  .scoring-card {
+    background:rgba(255,255,255,0.03); border-radius:7px; padding:0.8rem;
+    text-align:center; border:1px solid rgba(255,255,255,0.06);
+  }
+  .scoring-card .pts {
+    font-family:'Syne',sans-serif; font-weight:800; font-size:1.5rem;
+    line-height:1;
+  }
+  .scoring-card .pts-label {
+    font-size:0.58rem; color:rgba(200,223,240,0.4);
+    text-transform:uppercase; letter-spacing:0.08em; margin-top:0.3rem;
+  }
+
+  .warning-box {
+    background:rgba(255,71,87,0.07); border:1px solid rgba(255,71,87,0.2);
+    border-radius:8px; padding:1.2rem 1.5rem;
+    font-size:0.7rem; line-height:1.7; color:rgba(200,223,240,0.75);
+    margin-bottom:2rem;
+  }
+  .warning-box strong { color:#ff4757; }
+
+  .honesty-box {
+    background:rgba(0,204,68,0.06); border:1px solid rgba(0,204,68,0.2);
+    border-radius:8px; padding:1.2rem 1.5rem;
+    font-size:0.7rem; line-height:1.7; color:rgba(200,223,240,0.75);
+  }
+  .honesty-box strong { color:var(--green); }
+
+  footer {
+    text-align:center; padding:1.5rem;
+    border-top:1px solid rgba(0,212,255,0.08);
+    font-size:0.65rem; color:rgba(200,223,240,0.2);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-wrap">
+    <a href="https://www.fly-air3.com/" target="_blank" style="text-decoration:none">
+      <div class="logo">AIR³ TDD<span> Task Analyser</span></div>
+    </a>
+    <div class="tagline">powered by Snowy</div>
+  </div>
+  <div class="nav-btns">
+    <a href="index.html" class="nav-btn btn-blue">✈️ Track Analyser</a>
+    <a href="score.html" class="nav-btn btn-gold">🏅 Scores</a>
+  </div>
+</header>
+
+<main>
+  <div class="page-title">📋 Championship Rules</div>
+  <div class="page-sub">Task Distance Duration (TDD) · AIR³ Paragliding</div>
+
+  <!-- General Rules -->
+  <div class="rule-section">
+    <div class="rule-section-title">⚖️ General Rules</div>
+    <div class="rule-item">
+      <div class="rule-num">1</div>
+      <div class="rule-text">All standard <b>airspace regulations</b> apply at all times.</div>
+    </div>
+    <div class="rule-item">
+      <div class="rule-num">2</div>
+      <div class="rule-text">The pilot must pass through the <b>Start (SSS)</b> before attempting any turnpoints.</div>
+    </div>
+    <div class="rule-item">
+      <div class="rule-num">3</div>
+      <div class="rule-text">Turnpoints (TP) can be reached <b>in any order</b> after the start. The Goal must be reached last.</div>
+    </div>
+    <div class="rule-item">
+      <div class="rule-num">4</div>
+      <div class="rule-text">The flight window closes at <b>6:00 PM</b>. Pilots must land at or before Goal by 6 PM. Tracking must stop at 6 PM.</div>
+    </div>
+  </div>
+
+  <!-- Scoring -->
+  <div class="rule-section">
+    <div class="rule-section-title">🏆 Scoring — Each Task is worth 1000 points</div>
+    <div class="scoring-grid">
+      <div class="scoring-card">
+        <div class="pts" style="color:var(--orange)">100</div>
+        <div class="pts-label">pts per Turnpoint</div>
+      </div>
+      <div class="scoring-card">
+        <div class="pts" style="color:#4488ff">200</div>
+        <div class="pts-label">pts for Goal</div>
+      </div>
+      <div class="scoring-card">
+        <div class="pts" style="color:var(--gold)">500</div>
+        <div class="pts-label">pts Distance (XContest)</div>
+      </div>
+    </div>
+    <div class="rule-item" style="margin-top:1rem">
+      <div class="rule-num">5</div>
+      <div class="rule-text">
+        <b>Distance points</b> are calculated as a proportion of <span class="highlight">500 pts</span> based on the furthest completed task flown that day.
+        The pilot with the highest XContest score receives 500 pts. All others receive a proportional score:<br><br>
+        <span style="color:var(--accent);font-size:0.65rem">Your Distance Points = (Your XContest Score ÷ Best XContest Score) × 500</span>
+      </div>
+    </div>
+    <div class="rule-item">
+      <div class="rule-num">6</div>
+      <div class="rule-text">Distance is measured as per <b>XContest points</b> for the flight.</div>
+    </div>
+  </div>
+
+  <!-- Submission -->
+  <div class="warning-box">
+    <strong>⚠️ Important — Flight Submission Rules</strong><br><br>
+    Flights must <strong>NOT</strong> be submitted if any of the following apply:
+    <ul style="margin-top:0.5rem;margin-left:1.2rem;line-height:2">
+      <li>The flight does not comply with airspace regulations</li>
+      <li>The tracklog continues after reaching Goal</li>
+      <li>The tracklog continues after 6:00 PM</li>
+    </ul>
+    <br>
+    Only the <strong>organiser</strong> can make a decision to validate a tracklog under specific conditions.
+    Contact the organiser if you are unsure whether your track can be submitted.
+  </div>
+
+  <!-- Honesty -->
+  <div class="honesty-box">
+    <strong>🤝 Spirit of the Championship</strong><br><br>
+    This championship is based on <strong>honesty</strong>. Any pilot participating in the championship
+    can protest against the validity of another pilot's flight if the rules are not respected.
+    All protests should be directed to the organiser.
+  </div>
+</main>
+
+<footer>
+  ⚡ Powered by Snowy &nbsp;·&nbsp;
+  <a href="https://www.fly-air3.com/" target="_blank" style="color:inherit;text-decoration:none">AIR³ Paragliding</a>
+</footer>
+
+</body>
+</html>
