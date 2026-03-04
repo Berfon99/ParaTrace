@@ -935,14 +935,7 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
               : (!isNaN(displayVal) && displayVal > 0) ? displayVal
               : null;
 
-  // Competition name = waypoint fingerprint (no user input - editable only in scoreboard)
-  const compName = taskData ? taskData.waypoints
-    .filter(w => w.type !== 'TAKEOFF')
-    .map(w => w.name + '(' + w.radius + 'm)')
-    .join(' · ') : 'Unknown Competition';
-
-  // Compute a canonical key from the waypoints (date + sorted waypoint names+radii)
-  // This groups flights with same task regardless of human-given competition name
+  // Compute canonical key from waypoints (groups same task regardless of display name)
   const wpFingerprint = (taskData ? taskData.waypoints
     .filter(w => w.type !== 'TAKEOFF')
     .map(w => w.name + ':' + w.radius)
@@ -950,15 +943,36 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
     .join(',') : '');
   const compKey = date + '||' + wpFingerprint;
 
-  const entry = { name, date, compName, compKey, wpFingerprint, trackPts, xcPts, xcUrl, submittedAt: new Date().toISOString() };
+  // Default competition name from waypoints
+  const defaultCompName = taskData ? taskData.waypoints
+    .filter(w => w.type !== 'TAKEOFF')
+    .map(w => w.name + '(' + w.radius + 'm)')
+    .join(' · ') : 'Unknown Competition';
 
   try {
     const btn = document.getElementById('submitBtn');
     btn.textContent = '⏳ Submitting...';
     btn.disabled = true;
 
-    // DocId based on compKey + pilot name (same task = same group regardless of compName)
+    // DocId based on compKey + pilot name
     const docId = (compKey + '_' + name).toLowerCase().replace(/[^a-z0-9]+/g, '_');
+
+    // Check if a custom name already exists in Firestore for this group
+    // Look for any existing doc with same compKey to preserve custom name
+    let compName = defaultCompName;
+    try {
+      const existing = await window.db.collection('scores')
+        .where('compKey', '==', compKey).limit(1).get();
+      if (!existing.empty) {
+        const existingName = existing.docs[0].data().compName;
+        // Use existing name only if it differs from the default (= was manually renamed)
+        if (existingName && existingName !== defaultCompName) {
+          compName = existingName;
+        }
+      }
+    } catch(e) { /* use default if query fails */ }
+
+    const entry = { name, date, compName, compKey, wpFingerprint, trackPts, xcPts, xcUrl, submittedAt: new Date().toISOString() };
     entry.docId = docId;
     await window.db.collection('scores').doc(docId).set(entry);
 
