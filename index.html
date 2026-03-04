@@ -250,6 +250,11 @@
       <div class="waypoints-list" id="waypointsList" style="display:none">
         <div class="empty-state">No task loaded</div>
       </div>
+      <div id="landByRow" style="display:none;margin-top:0.5rem;padding:0.5rem 0.7rem;
+        background:rgba(255,215,0,0.07);border:1px solid rgba(255,215,0,0.2);
+        border-radius:6px;font-size:0.68rem;color:var(--gold);">
+        🕕 Land by: <b id="landByTime">—</b> <span style="opacity:0.5;font-size:0.58rem">(UTC)</span>
+      </div>
     </div>
 
     <div>
@@ -952,10 +957,15 @@ function showSubmitMsg(msg, ok) {
 
 // ── WAYPOINTS TOGGLE ─────────────────────────────────────────────────────────
 function toggleWaypoints() {
-  const list = document.getElementById('waypointsList');
-  const btn  = document.getElementById('wpToggle');
+  const list     = document.getElementById('waypointsList');
+  const landBy   = document.getElementById('landByRow');
+  const btn      = document.getElementById('wpToggle');
   const isHidden = list.style.display === 'none';
-  list.style.display = isHidden ? 'flex' : 'none';
+  list.style.display   = isHidden ? 'flex' : 'none';
+  // Only show landByRow if it has content (deadline exists)
+  if (landBy && document.getElementById('landByTime').textContent !== '—') {
+    landBy.style.display = isHidden ? 'block' : 'none';
+  }
   btn.textContent = isHidden ? '−' : '+';
 }
 
