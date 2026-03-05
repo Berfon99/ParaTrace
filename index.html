@@ -982,23 +982,12 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
     // DocId based on compKey + pilot name
     const docId = (compKey + '_' + name).toLowerCase().replace(/[^a-z0-9]+/g, '_');
 
-    // Check if a custom name already exists in Firestore for this group
-    // Look for any existing doc with same compKey to preserve custom name
-    let compName = defaultCompName;
-    try {
-      const existing = await window.db.collection('scores')
-        .where('compKey', '==', compKey).limit(1).get();
-      if (!existing.empty) {
-        const existingName = existing.docs[0].data().compName;
-        // Use existing name only if it differs from the default (= was manually renamed)
-        if (existingName && existingName !== defaultCompName) {
-          compName = existingName;
-        }
-      }
-    } catch(e) { /* use default if query fails */ }
+    // Use default competition name (editable in scoreboard after submit)
+    const compName = defaultCompName;
 
     const entry = { name, date, compName, compKey, wpFingerprint, trackPts, xcPts, xcUrl, submittedAt: new Date().toISOString() };
     entry.docId = docId;
+    console.log('Submitting to Firestore:', docId, entry);
     await window.db.collection('scores').doc(docId).set(entry);
 
     window.location.href = 'score.html';
