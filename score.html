@@ -300,6 +300,12 @@ async function renderScores() {
       return totalB - totalA;
     });
 
+    // Real Firestore doc IDs for deletion
+    const groupDocIds = pilots.map(p => p._firestoreId || p.docId ||
+      ((p.compName || 'Unknown Competition') + '_' + p.name).toLowerCase().replace(/[^a-z0-9]+/g, '_')
+    );
+    const safeDocIds = groupDocIds.join('|');
+
     html += `<div class="date-group">
       <div class="date-header" style="justify-content:space-between;align-items:center">
         <span>📅 ${displayDate} &nbsp;·&nbsp; 🏁
