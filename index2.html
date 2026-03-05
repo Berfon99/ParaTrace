@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIR³ TDD Task Analyser</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --sky: #0a1628; --horizon: #0d2444; --cloud: #e8f4fd;
+    --accent: #00d4ff; --gold: #ffd700; --green: #00ff88;
+    --red: #ff4757; --orange: #ff9f43; --text: #c8dff0;
+    --panel: rgba(13,36,68,0.97);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--sky); color: var(--text);
+    font-family: 'Space Mono', monospace;
+    height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+  }
+  header {
+    background: linear-gradient(135deg, #061018 0%, var(--horizon) 100%);
+    padding: 0.8rem 2rem; display: flex; align-items: center; gap: 1.5rem;
+    border-bottom: 1px solid rgba(0,212,255,0.2);
+    box-shadow: 0 4px 30px rgba(0,0,0,0.5); flex-shrink: 0;
+  }
+  .logo { font-family:'Syne',sans-serif; font-weight:800; font-size:1.4rem; color:var(--accent); letter-spacing:-0.02em; }
+  .logo span { color: var(--gold); }
+  .tagline { font-size:0.65rem; color:rgba(200,223,240,0.45); letter-spacing:0.1em; text-transform:uppercase; }
+  .main-layout { display:grid; grid-template-columns:340px 1fr; flex:1; min-height:0; }
+  .sidebar {
+    background: var(--panel); border-right:1px solid rgba(0,212,255,0.15);
+    display:flex; flex-direction:column; overflow-y:auto; padding:1.2rem; gap:1.2rem;
+  }
+  .section-title {
+    font-family:'Syne',sans-serif; font-size:0.62rem; letter-spacing:0.15em;
+    text-transform:uppercase; color:var(--accent); margin-bottom:0.6rem;
+    display:flex; align-items:center; gap:0.5rem;
+  }
+  .section-title::after { content:''; flex:1; height:1px; background:rgba(0,212,255,0.2); }
+  .upload-zone {
+    border:1.5px dashed rgba(0,212,255,0.3); border-radius:8px; padding:1rem;
+    text-align:center; cursor:pointer; transition:all 0.2s;
+    background:rgba(0,212,255,0.03); position:relative;
+  }
+  .upload-zone:hover, .upload-zone.drag-over { border-color:var(--accent); background:rgba(0,212,255,0.08); }
+  .upload-zone input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; }
+  .upload-icon { font-size:1.5rem; margin-bottom:0.3rem; }
+  .upload-label { font-size:0.7rem; color:var(--accent); font-weight:700; }
+  .upload-sub { font-size:0.58rem; color:rgba(200,223,240,0.4); margin-top:0.2rem; }
+  .file-badge {
+    display:inline-flex; align-items:center; gap:0.4rem;
+    background:rgba(0,255,136,0.1); border:1px solid rgba(0,255,136,0.3);
+    border-radius:4px; padding:0.25rem 0.5rem; font-size:0.62rem;
+    color:var(--green); margin-top:0.4rem; word-break:break-all;
+  }
+  .pilot-card {
+    background:rgba(0,212,255,0.06); border:1px solid rgba(0,212,255,0.15);
+    border-radius:8px; padding:0.7rem; display:none; flex-direction:column; gap:0.3rem;
+  }
+  .pilot-card.visible { display:flex; }
+  .pilot-name { font-family:'Syne',sans-serif; font-size:1rem; font-weight:700; color:var(--cloud); }
+  .pilot-date { font-size:0.65rem; color:rgba(200,223,240,0.5); }
+  .xcontest-section { display:flex; flex-direction:column; gap:0.5rem; }
+  .input-row { display:flex; gap:0.4rem; }
+  .xc-input {
+    flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(0,212,255,0.2);
+    border-radius:6px; padding:0.5rem 0.6rem; color:var(--cloud);
+    font-family:'Space Mono',monospace; font-size:0.62rem; outline:none; transition:border-color 0.2s;
+  }
+  .xc-input:focus { border-color:var(--accent); }
+  .btn-sm {
+    padding:0.5rem 0.7rem; border:none; border-radius:6px;
+    font-family:'Space Mono',monospace; font-size:0.62rem; font-weight:700;
+    cursor:pointer; background:rgba(0,212,255,0.15); color:var(--accent);
+    border:1px solid rgba(0,212,255,0.3); transition:all 0.2s; white-space:nowrap;
+  }
+  .btn-sm:hover { background:rgba(0,212,255,0.25); }
+  .xcontest-result {
+    background:rgba(255,255,255,0.03); border-radius:6px; padding:0.5rem 0.7rem;
+    font-size:0.65rem; display:none; align-items:center; justify-content:space-between;
+  }
+  .xcontest-result.visible { display:flex; }
+  .xc-pts-val { font-family:'Syne',sans-serif; font-size:1.1rem; font-weight:700; color:var(--accent); }
+  .xc-link { font-size:0.58rem; color:rgba(200,223,240,0.4); text-decoration:none; }
+  .xc-link:hover { color:var(--accent); }
+  .waypoints-list { display:flex; flex-direction:column; gap:0.4rem; }
+  .wp-item {
+    background:rgba(255,255,255,0.04); border-radius:6px; padding:0.6rem;
+    border-left:3px solid transparent; display:flex; align-items:center; gap:0.6rem; font-size:0.68rem;
+  }
+  .wp-item.tp { border-color:#a0522d; }
+  .wp-item.goal { border-color:#4488ff; }
+  .wp-item.sss { border-color:var(--accent); }
+  .wp-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .wp-info { flex:1; min-width:0; }
+  .wp-name { font-weight:700; color:var(--cloud); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .wp-detail { color:rgba(200,223,240,0.45); font-size:0.58rem; margin-top:0.1rem; }
+  .wp-tag { font-size:0.52rem; letter-spacing:0.06em; padding:0.12rem 0.35rem; border-radius:3px; font-weight:700; flex-shrink:0; }
+  .tag-tp   { background:rgba(160,82,45,0.2); color:#a0522d; }
+  .tag-goal { background:rgba(68,136,255,0.2);  color:#4488ff; }
+  .tag-sss  { background:rgba(0,204,68,0.2);  color:#00cc44; }
+  .btn {
+    width:100%; padding:0.75rem; border:none; border-radius:6px;
+    font-family:'Space Mono',monospace; font-size:0.72rem; font-weight:700;
+    cursor:pointer; transition:all 0.2s; letter-spacing:0.05em; text-transform:uppercase;
+  }
+  .btn-primary { background:linear-gradient(135deg,var(--accent),#0099cc); color:#000; }
+  .btn-primary:hover { filter:brightness(1.1); transform:translateY(-1px); }
+  .btn-primary:disabled { opacity:0.3; cursor:not-allowed; transform:none; }
+  .score-panel {
+    background:rgba(255,255,255,0.03); border-radius:8px; padding:0.9rem;
+    border:1px solid rgba(0,212,255,0.1);
+  }
+  .score-total { font-family:'Syne',sans-serif; font-size:2.3rem; font-weight:800; color:var(--gold); text-align:center; line-height:1; }
+  .score-label { text-align:center; font-size:0.58rem; letter-spacing:0.1em; text-transform:uppercase; color:rgba(200,223,240,0.4); margin-top:0.2rem; }
+  .score-breakdown { margin-top:0.7rem; display:flex; flex-direction:column; gap:0.25rem; }
+  .score-item {
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:0.65rem; padding:0.35rem 0.5rem; border-radius:4px; background:rgba(255,255,255,0.03);
+  }
+  .score-item.passed  { color:var(--green); }
+  .score-item.failed  { color:rgba(200,223,240,0.3); }
+  .score-item.warning { color:var(--orange); }
+  .score-item.passed::before  { content:'✓ '; }
+  .score-item.failed::before  { content:'✗ '; }
+  .score-item.warning::before { content:'⚠ '; }
+  .score-pts { font-weight:700; font-size:0.72rem; }
+  .info-msg {
+    background:rgba(0,212,255,0.06); border:1px solid rgba(0,212,255,0.15);
+    border-radius:6px; padding:0.5rem; font-size:0.62rem; color:rgba(200,223,240,0.55); line-height:1.5;
+  }
+  .map-wrapper { position:relative; flex:1; min-width:0; }
+  #map { width:100%; height:100%; z-index:0; }
+  .leaflet-container { background:#0a1628; }
+  .custom-marker {
+    display:flex; align-items:center; justify-content:center;
+    border-radius:50%; border:2px solid white;
+    font-size:9px; font-weight:bold; color:white; font-family:'Space Mono',monospace;
+  }
+  .empty-state { text-align:center; padding:0.8rem; color:rgba(200,223,240,0.3); font-size:0.65rem; }
+  .champ-select {
+    flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(0,212,255,0.25);
+    border-radius:6px; padding:0.5rem 0.6rem; color:var(--cloud);
+    font-family:'Space Mono',monospace; font-size:0.62rem; outline:none; cursor:pointer;
+  }
+  .champ-select:focus { border-color:var(--accent); }
+  .champ-select option { background:#0d2444; color:var(--cloud); }
+  .task-card {
+    background:rgba(0,212,255,0.05); border:1px solid rgba(0,212,255,0.15);
+    border-radius:6px; padding:0.5rem 0.7rem; cursor:pointer;
+    font-size:0.62rem; transition:all 0.2s; display:flex; align-items:center; gap:0.5rem;
+  }
+  .task-card:hover { border-color:var(--accent); background:rgba(0,212,255,0.1); }
+  .task-card.selected { border-color:var(--green); background:rgba(0,255,136,0.08); }
+  .task-date { font-family:'Syne',sans-serif; font-weight:700; color:var(--cloud); font-size:0.65rem; }
+  .task-wps { color:rgba(200,223,240,0.4); font-size:0.55rem; margin-top:0.1rem; }
+  .del-btn {
+    margin-left:auto; background:none; border:none; color:rgba(255,71,87,0.5);
+    cursor:pointer; font-size:0.75rem; padding:0.1rem 0.3rem; transition:color 0.2s; flex-shrink:0;
+  }
+  .del-btn:hover { color:var(--red); }
+  .btn-submit {
+    flex:1; background:linear-gradient(135deg,#00cc44,#009933); color:#000;
+    font-family:'Space Mono',monospace; font-size:0.7rem; font-weight:700;
+    padding:0.75rem; border:none; border-radius:6px; cursor:pointer;
+    letter-spacing:0.05em; text-transform:uppercase; transition:all 0.2s;
+  }
+  .btn-submit:hover { filter:brightness(1.1); transform:translateY(-1px); }
+  .btn-submit:disabled { opacity:0.3; cursor:not-allowed; transform:none; }
+  .btn-score {
+    flex:1; background:rgba(68,136,255,0.15); color:#4488ff;
+    border:1px solid rgba(68,136,255,0.4); border-radius:6px;
+    font-family:'Space Mono',monospace; font-size:0.7rem; font-weight:700;
+    padding:0.75rem; text-align:center; text-decoration:none;
+    letter-spacing:0.05em; text-transform:uppercase; transition:all 0.2s;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .btn-score:hover { background:rgba(68,136,255,0.25); }
+
+  /* Summary card */
+  .summary-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(0,212,255,0.15);
+    border-radius:10px; padding:1rem;
+    display:none; flex-direction:column; gap:0.6rem;
+  }
+  .summary-card.visible { display:flex; }
+  .summary-pilot {
+    font-family:'Syne',sans-serif; font-size:1rem; font-weight:800;
+    color:var(--cloud); border-bottom:1px solid rgba(0,212,255,0.15); padding-bottom:0.5rem;
+  }
+  .summary-date { font-size:0.62rem; color:rgba(200,223,240,0.45); margin-top:-0.3rem; }
+  .summary-row {
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:0.68rem; padding:0.35rem 0.5rem;
+    background:rgba(255,255,255,0.03); border-radius:5px;
+  }
+  .summary-row .label { color:rgba(200,223,240,0.55); }
+  .summary-row .value { font-family:'Syne',sans-serif; font-weight:700; font-size:0.9rem; }
+  .value-task  { color:var(--gold); }
+  .value-track { color:#ff8c00; }
+  .value-xc    { color:var(--accent); }
+</style>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAo6MSWOQXVQuCuluk5hhJY36TGvNqc8L8",
+    authDomain: "air3tddanalyser.firebaseapp.com",
+    projectId: "air3tddanalyser",
+    storageBucket: "air3tddanalyser.firebasestorage.app",
+    messagingSenderId: "40508185051",
+    appId: "1:40508185051:web:6b7c9069e4d4f94e4f2ffe"
+  };
+  firebase.initializeApp(firebaseConfig);
+  window.db = firebase.firestore();
+</script>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;align-items:center;gap:1rem">
+    <a href="https://www.fly-air3.com/" target="_blank" style="text-decoration:none"><div class="logo">AIR³ TDD<span> Task Analyser</span></div></a>
+    <a href="rules.html" style="
+      display:inline-flex;align-items:center;gap:0.4rem;
+      background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.35);
+      border-radius:6px;padding:0.35rem 0.8rem;
+      color:var(--gold);text-decoration:none;
+      font-family:'Space Mono',monospace;font-size:0.65rem;font-weight:700;
+      letter-spacing:0.05em;transition:all 0.2s;
+    " onmouseover="this.style.background='rgba(255,215,0,0.22)'" onmouseout="this.style.background='rgba(255,215,0,0.12)'">📋 RULES</a>
+  </div>
+  <div class="tagline">powered by Snowy</div>
+</header>
+
+<div class="main-layout">
+  <div class="sidebar">
+
+    <!-- ── CHAMPIONSHIP ── -->
+    <div>
+      <div class="section-title">🏆 Championship</div>
+      <div style="display:flex;gap:0.4rem;align-items:center">
+        <select class="champ-select" id="champSelect">
+          <option value="">— Select a championship —</option>
+        </select>
+        <button class="btn-sm" id="champNewBtn" title="New championship">＋</button>
+        <button class="btn-sm" id="champDelBtn" title="Delete championship" style="color:var(--red);border-color:rgba(255,71,87,0.3);background:rgba(255,71,87,0.08)" disabled>🗑</button>
+      </div>
+    </div>
+
+    <!-- ── TASK ── -->
+    <div id="taskSection" style="display:none">
+      <div class="section-title">📋 Task</div>
+      <div id="taskList" style="display:flex;flex-direction:column;gap:0.4rem;margin-bottom:0.5rem">
+        <div class="empty-state">No tasks yet</div>
+      </div>
+      <button class="btn-sm" id="taskNewBtn" style="width:100%">＋ New task (upload .xctsk)</button>
+      <input type="file" accept=".xctsk,.json" id="xctskInputChamp" style="display:none">
+    </div>
+
+    <!-- ── XCTASK (shown only when adding new task or no championship mode) ── -->
+    <div id="xctskSection">
+      <div class="section-title">📍 XCTask Task</div>
+      <div class="xcontest-section">
+        <div class="input-row">
+          <input class="xc-input" id="taskUrl" type="text" placeholder="https://tools.xcontest.org/xctsk/load?taskCode=…">
+          <button class="btn-sm" id="taskUrlBtn">Load</button>
+        </div>
+        <div id="taskUrlError" style="font-size:0.6rem;color:var(--red);display:none"></div>
+      </div>
+      <div style="font-size:0.58rem;color:rgba(200,223,240,0.3);text-align:center;margin:0.3rem 0">— or upload file —</div>
+      <div class="upload-zone" id="xctskZone">
+        <input type="file" accept=".xctsk,.json" id="xctskInput">
+        <div class="upload-icon">🗺️</div>
+        <div class="upload-label">Load .xctsk file</div>
+        <div class="upload-sub">Drag & drop or click</div>
+      </div>
+      <div id="xctskBadge"></div>
+    </div><!-- end xctskSection -->
+
+    <div>
+      <div class="section-title">🎯 Waypoints
+        <button id="wpToggle" onclick="toggleWaypoints()" style="
+          background:none;border:none;cursor:pointer;
+          color:var(--accent);font-size:1rem;font-weight:700;
+          margin-left:0.5rem;line-height:1;padding:0 0.2rem;
+        ">+</button>
+      </div>
+      <div class="waypoints-list" id="waypointsList" style="display:none">
+        <div class="empty-state">No task loaded</div>
+      </div>
+      <div id="landByRow" style="display:none;margin-top:0.5rem;padding:0.5rem 0.7rem;
+        background:rgba(255,215,0,0.07);border:1px solid rgba(255,215,0,0.2);
+        border-radius:6px;font-size:0.68rem;color:var(--gold);">
+        🕕 Land by: <b id="landByTime">—</b> <span style="opacity:0.5;font-size:0.58rem">(UTC)</span>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">✈️ IGC Track</div>
+      <div class="upload-zone" id="igcZone">
+        <input type="file" accept=".igc" id="igcInput">
+        <div class="upload-icon">📡</div>
+        <div class="upload-label">Load .igc file</div>
+        <div class="upload-sub">GPS flight track</div>
+      </div>
+      <div id="igcBadge"></div>
+    </div>
+
+    <div>
+      <div class="section-title">👤 Pilot</div>
+      <div class="pilot-card" id="pilotCard">
+        <div class="pilot-name" id="pilotName">—</div>
+        <div class="pilot-date" id="pilotDate"></div>
+      </div>
+      <div id="pilotEmpty" class="empty-state" style="text-align:left;padding:0.2rem 0">Load an IGC file</div>
+    </div>
+
+    <div>
+      <div class="section-title">🌐 XContest</div>
+      <div class="xcontest-section">
+        <div class="input-row">
+          <input class="xc-input" id="xcPtsManual" type="number" step="0.01" placeholder="Points (e.g. 55.52)">
+          <button class="btn-sm" id="xcManualOk">OK</button>
+        </div>
+        <div class="input-row">
+          <input class="xc-input" id="xcUrl" type="text" placeholder="URL XContest (optional)">
+          <button class="btn-sm" id="xcFetchBtn">Fetch</button>
+        </div>
+        <div class="xcontest-result" id="xcResult">
+          <div>
+            <div style="font-size:0.55rem;color:rgba(200,223,240,0.4);margin-bottom:0.2rem">XContest Points</div>
+            <div class="xc-pts-val" id="xcPts">—</div>
+          </div>
+          <a class="xc-link" id="xcLink" href="#" target="_blank">View flight ↗</a>
+        </div>
+        <div id="xcError" style="font-size:0.6rem;color:var(--red);display:none;line-height:1.4"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">🔍 Analysis</div>
+      <button class="btn btn-primary" id="analyzeBtn" disabled>Analyze track</button>
+    </div>
+
+    <div>
+      <div class="section-title">🏆 TDD Score</div>
+      <div class="score-panel">
+        <div class="score-total" id="scoreTotal">—</div>
+        <div class="score-label">points</div>
+        <div class="score-breakdown" id="scoreBreakdown">
+          <div class="info-msg">Load a task and an IGC track, then run the analysis.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div>
+      <div class="section-title">📋 Summary</div>
+      <div id="violationBox" style="
+        display:none; background:rgba(255,71,87,0.1); border:1px solid rgba(255,71,87,0.35);
+        border-radius:8px; padding:0.9rem 1rem; font-size:0.65rem; line-height:1.8;
+        color:rgba(255,180,180,0.9); margin-bottom:0.5rem;
+      "></div>
+      <div class="summary-card" id="summaryCard">
+        <div>
+          <div class="summary-pilot" id="summaryName">—</div>
+          <div class="summary-date" id="summaryDate"></div>
+        </div>
+        <div class="summary-row">
+          <span class="label">Track points (IGC)</span>
+          <span class="value value-track" id="summaryTrackPts">—</span>
+        </div>
+        <div class="summary-row" id="summaryXcRow" style="display:none">
+          <span class="label">XContest points</span>
+          <span class="value value-xc" id="summaryXcPts">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div style="display:flex;gap:0.5rem;">
+      <button class="btn btn-submit" id="submitBtn" disabled>📤 Submit</button>
+      <a href="score.html" class="btn btn-score">🏅 Scores</a>
+    </div>
+    <div id="submitMsg" style="font-size:0.62rem;display:none;padding:0.4rem 0.6rem;border-radius:5px;"></div>
+
+  </div>
+
+  <div class="map-wrapper">
+    <div id="map"></div>
+  </div>
+</div>
+
+<script>
+// ── MAP ───────────────────────────────────────────────────────────────────────
+const map = L.map('map', {zoomControl:true}).setView([45.5, 6.5], 9);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution:'© OpenStreetMap contributors', maxZoom:18
+}).addTo(map);
+
+let taskData  = null;
+let igcPoints = [];
+const taskLayers = L.layerGroup().addTo(map);
+const igcLayer   = L.layerGroup().addTo(map);
+
+// ── XCTSK ─────────────────────────────────────────────────────────────────────
+document.getElementById('xctskInput').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const parsedJson = JSON.parse(ev.target.result);
+      taskData = parseXCTaskJSON(parsedJson);
+      renderTask(taskData);
+      document.getElementById('xctskBadge').innerHTML = `<div class="file-badge">✓ ${file.name}</div>`;
+      localStorage.setItem('paratrace_last_task', JSON.stringify({raw: parsedJson, label: file.name}));
+      // Save task to Firestore if championship selected
+      if (currentChampId) saveTaskToFirestore(parsedJson);
+      checkEnableAnalyze();
+    } catch(err) { alert('Error reading XCTask: ' + err.message); }
+  };
+  reader.readAsText(file);
+});
+
+function parseXCTaskJSON(data) {
+  const tps = data.turnpoints || data.task?.turnpoints || [];
+
+  // Parse goal deadline from xctsk (e.g. "07:00:00Z" = seconds since midnight UTC)
+  let deadlineSec = null;
+  const deadlineStr = data.goal?.deadline || data.task?.goal?.deadline || null;
+  if (deadlineStr) {
+    const m = deadlineStr.match(/(\d{2}):(\d{2}):(\d{2})/);
+    if (m) deadlineSec = parseInt(m[1])*3600 + parseInt(m[2])*60 + parseInt(m[3]);
+  }
+
+  return {
+    deadlineSec,
+    waypoints: tps.map((tp, i) => {
+      const wp = tp.waypoint || tp;
+      const lat    = parseFloat(wp.lat    ?? wp.latitude);
+      const lon    = parseFloat(wp.lon    ?? wp.longitude);
+      const radius = parseFloat(tp.radius ?? tp.cylinderRadius ?? 400);
+      const name   = wp.name || wp.description || `WP${i}`;
+
+      // Detect type from explicit field FIRST (most reliable)
+      let type = 'TP';
+      if (tp.type) {
+        const t = tp.type.toString().toUpperCase();
+        if (t === 'TAKEOFF')                                          type = 'TAKEOFF'; // skip from scoring
+        if (t.includes('SSS') || t.includes('START') || t === '1')   type = 'SSS';
+        if (t.includes('ESS') || t.includes('GOAL') || t === '3')    type = 'GOAL';
+      }
+      // Fallback: if no explicit type, use position
+      if (type === 'TP' && !tp.type) {
+        if (i === 0)               type = 'SSS';
+        if (i === tps.length - 1)  type = 'GOAL';
+      }
+      // Also check top-level goal object
+      if (data.goal && i === tps.length - 1 && type === 'TP') type = 'GOAL';
+
+      return { lat, lon, radius, name, type };
+    }).filter(wp => wp.type !== 'TAKEOFF') // remove TAKEOFF — not a scored waypoint
+  };
+}
+
+function renderTask(task) {
+  taskLayers.clearLayers();
+  const listEl = document.getElementById('waypointsList');
+  listEl.innerHTML = '';
+  const bounds = [];
+  let tpCounter = 0;
+
+  task.waypoints.forEach((wp, i) => {
+    const color = wp.type==='GOAL' ? '#4488ff' : wp.type==='SSS' ? '#00cc44' : '#a0522d';
+    L.circle([wp.lat, wp.lon], {radius:wp.radius, color, fillColor:color, fillOpacity:0.12, weight:2})
+     .bindPopup(`<b>${wp.name}</b><br>Type: ${wp.type}<br>Radius: ${wp.radius}m`)
+     .addTo(taskLayers);
+    const icon = L.divIcon({
+      className:'',
+      html:`<div class="custom-marker" style="width:22px;height:22px;background:${color}88;border-color:${color}">${i+1}</div>`,
+      iconSize:[22,22], iconAnchor:[11,11]
+    });
+    L.marker([wp.lat, wp.lon], {icon}).addTo(taskLayers);
+    bounds.push([wp.lat, wp.lon]);
+
+    if (wp.type === 'TP') tpCounter++;
+    const cls    = wp.type==='GOAL' ? 'goal' : wp.type==='SSS' ? 'sss' : 'tp';
+    const tagCls = 'tag-' + cls;
+    const label  = wp.type==='GOAL' ? 'GOAL' : wp.type==='SSS' ? 'SSS' : `TP${tpCounter}`;
+    listEl.innerHTML += `
+      <div class="wp-item ${cls}">
+        <div class="wp-dot" style="background:${color}"></div>
+        <div class="wp-info">
+          <div class="wp-name">${wp.name}</div>
+          <div class="wp-detail">⌀ ${(wp.radius*2).toFixed(0)}m · ${wp.lat.toFixed(4)}, ${wp.lon.toFixed(4)}</div>
+        </div>
+        <span class="wp-tag ${tagCls}">${label}</span>
+      </div>`;
+  });
+  if (bounds.length) map.fitBounds(bounds, {padding:[60,60]});
+
+  // Show "Land by" deadline from task
+  const landByRow  = document.getElementById('landByRow');
+  const landByTime = document.getElementById('landByTime');
+  if (task.deadlineSec !== null && task.deadlineSec !== undefined) {
+    const dh = Math.floor(task.deadlineSec / 3600).toString().padStart(2,'0');
+    const dm = Math.floor((task.deadlineSec % 3600) / 60).toString().padStart(2,'0');
+    landByTime.textContent = dh + ':' + dm;
+  } else {
+    landByTime.textContent = 'Not set';
+  }
+  // Always show the row (visibility controlled by toggle button)
+  landByRow.dataset.hasContent = 'true';
+}
+
+// ── TASK URL LOADER ──────────────────────────────────────────────────────────
+document.getElementById('taskUrlBtn').addEventListener('click', loadTaskFromUrl);
+document.getElementById('taskUrl').addEventListener('keydown', e => { if(e.key==='Enter') loadTaskFromUrl(); });
+
+async function loadTaskFromUrl() {
+  const url    = document.getElementById('taskUrl').value.trim();
+  const errEl  = document.getElementById('taskUrlError');
+  const btn    = document.getElementById('taskUrlBtn');
+  errEl.style.display = 'none';
+
+  if (!url) { errEl.textContent='Please enter a URL.'; errEl.style.display='block'; return; }
+
+  btn.textContent = '...'; btn.disabled = true;
+
+  // Extract taskCode if it's a xcontest tools URL, build raw API URL
+  // https://tools.xcontest.org/xctsk/load?taskCode=deko
+  // The raw JSON endpoint is the same URL — we just need to bypass CORS
+  let fetchUrl = url;
+
+  // List of CORS proxies to try in order
+  const proxies = [
+    u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+    u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+    u => `https://cors-anywhere.herokuapp.com/${u}`,
+    u => `https://thingproxy.freeboard.io/fetch/${u}`,
+  ];
+
+  let json = null;
+  let lastError = '';
+
+  // 1. Try direct first (sometimes works)
+  try {
+    const r = await fetch(fetchUrl, {signal: AbortSignal.timeout(4000)});
+    if (r.ok) json = await r.json();
+  } catch(e) { lastError = e.message; }
+
+  // 2. Try each proxy
+  for (const makeProxy of proxies) {
+    if (json) break;
+    try {
+      const proxyUrl = makeProxy(fetchUrl);
+      const r = await fetch(proxyUrl, {signal: AbortSignal.timeout(6000)});
+      if (!r.ok) continue;
+      const data = await r.json();
+      // allorigins wraps in {contents: "..."}
+      if (data.contents !== undefined) {
+        json = JSON.parse(data.contents);
+      } else {
+        json = data;
+      }
+    } catch(e) { lastError = e.message; }
+  }
+
+  if (json && (json.turnpoints || json.task)) {
+    taskData = parseXCTaskJSON(json);
+    renderTask(taskData);
+    const taskLabel = document.getElementById('taskUrl').value.trim() || 'URL';
+    document.getElementById('xctskBadge').innerHTML = `<div class="file-badge">✓ Loaded from URL</div>`;
+    localStorage.setItem('paratrace_last_task', JSON.stringify({raw: json, label: taskLabel}));
+    if (currentChampId) saveTaskToFirestore(json);
+    checkEnableAnalyze();
+  } else {
+    // All proxies failed — show instructions to download manually
+    errEl.innerHTML = `Could not load automatically (CORS blocked).<br>
+      <a href="${url}" target="_blank" style="color:var(--accent)">Click here to open the task URL</a>,
+      save the file as <b>.xctsk</b>, then load it with the file picker below.`;
+    errEl.style.display = 'block';
+  }
+
+  btn.textContent = 'Load'; btn.disabled = false;
+}
+
+// ── IGC ───────────────────────────────────────────────────────────────────────
+document.getElementById('igcInput').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const content = ev.target.result;
+    igcPoints = parseIGC(content);
+    renderIGC(igcPoints);
+    renderPilot(parseIGCHeader(content));
+    document.getElementById('igcBadge').innerHTML =
+      `<div class="file-badge">✓ ${file.name} · ${igcPoints.length} GPS pts</div>`;
+    // Reset XContest points when a new IGC is loaded
+    document.getElementById('xcPtsManual').value = '';
+    document.getElementById('xcPts').textContent = '—';
+    checkEnableAnalyze();
+    document.getElementById('xcResult').classList.remove('visible');
+    document.getElementById('xcError').style.display = 'none';
+    checkEnableAnalyze();
+  };
+  reader.readAsText(file);
+});
+
+function parseIGCHeader(content) {
+  const info = { name: null, date: null };
+  for (const line of content.split(/\r?\n/)) {
+    if (/^HFPLT/i.test(line)) {
+      const m = line.match(/[:\s]+(.+)$/);
+      if (m && m[1].trim()) info.name = m[1].trim().replace(/,\s*$/, '');
+    }
+    if (/^HFDTE/i.test(line) && !info.date) {
+      const m = line.match(/(\d{2})(\d{2})(\d{2})/);
+      if (m) {
+        const year = parseInt(m[3]) > 50 ? '19'+m[3] : '20'+m[3];
+        info.date = `${m[1]}/${m[2]}/${year}`;
+      }
+    }
+  }
+  return info;
+}
+
+function renderPilot(info) {
+  const card  = document.getElementById('pilotCard');
+  const empty = document.getElementById('pilotEmpty');
+  if (info.name || info.date) {
+    card.classList.add('visible');
+    empty.style.display = 'none';
+    document.getElementById('pilotName').textContent = info.name || 'Unknown pilot';
+    document.getElementById('pilotDate').textContent = info.date ? '📅 ' + info.date : '';
+  }
+}
+
+function parseIGC(content) {
+  const points = [];
+  for (const line of content.split(/\r?\n/)) {
+    if (!line.startsWith('B') || line.length < 35) continue;
+    try {
+      const latD = parseInt(line.slice(7,9));
+      const latM = parseInt(line.slice(9,14)) / 1000 / 60; // MMmmm thousandths of minute → degrees
+      const latH = line[14];
+      const lonD = parseInt(line.slice(15,18));
+      const lonM = parseInt(line.slice(18,23)) / 1000 / 60;
+      const lonH = line[23];
+      if (line[24] !== 'A') continue;
+      let lat = latD + latM; if (latH==='S') lat=-lat;
+      let lon = lonD + lonM; if (lonH==='W') lon=-lon;
+      if (lat===0 && lon===0) continue;
+      const hh=parseInt(line.slice(1,3)), mm=parseInt(line.slice(3,5)), ss=parseInt(line.slice(5,7));
+      const alt=parseInt(line.slice(25,30));
+      points.push({lat, lon, alt, time:hh*3600+mm*60+ss});
+    } catch(e) {}
+  }
+  return points;
+}
+
+function renderIGC(points) {
+  igcLayer.clearLayers();
+  if (!points.length) return;
+  const latlngs = points.map(p=>[p.lat,p.lon]);
+  L.polyline(latlngs, {color:'#ff8c00', weight:2.5, opacity:0.9}).addTo(igcLayer);
+  const mkS = L.divIcon({className:'', iconSize:[10,10], iconAnchor:[5,5],
+    html:`<div style="width:10px;height:10px;background:#ff8c00;border-radius:50%;border:2px solid #fff"></div>`});
+  const mkE = L.divIcon({className:'', iconSize:[10,10], iconAnchor:[5,5],
+    html:`<div style="width:10px;height:10px;background:#ff4757;border-radius:50%;border:2px solid #fff"></div>`});
+  L.marker([points[0].lat, points[0].lon], {icon:mkS}).bindPopup('Takeoff').addTo(igcLayer);
+  L.marker([points[points.length-1].lat, points[points.length-1].lon], {icon:mkE}).bindPopup('Landing').addTo(igcLayer);
+  if (!taskData) map.fitBounds(latlngs, {padding:[40,40]});
+}
+
+// ── XCONTEST ─────────────────────────────────────────────────────────────────
+document.getElementById('xcFetchBtn').addEventListener('click', fetchXContest);
+document.getElementById('xcUrl').addEventListener('keydown', e => { if(e.key==='Enter') fetchXContest(); });
+document.getElementById('xcManualOk').addEventListener('click', applyManualXcPoints);
+document.getElementById('xcPtsManual').addEventListener('keydown', e => { if(e.key==='Enter') applyManualXcPoints(); });
+// checkEnableAnalyze is called after applyManualXcPoints (OK/Enter) confirms the value
+
+
+async function fetchXContest() {
+  const url    = document.getElementById('xcUrl').value.trim();
+  const errEl  = document.getElementById('xcError');
+  const resEl  = document.getElementById('xcResult');
+  errEl.style.display='none'; resEl.classList.remove('visible');
+
+  if (!url || !url.includes('xcontest.org')) {
+    errEl.textContent='Invalid XContest URL (must contain xcontest.org).';
+    errEl.style.display='block'; return;
+  }
+  const btn = document.getElementById('xcFetchBtn');
+  btn.textContent='...'; btn.disabled=true;
+
+  try {
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+    const resp = await fetch(proxyUrl);
+    const data = await resp.json();
+    const html = data.contents || '';
+
+    // XContest affiche les points sous différentes formes
+    let pts = null;
+    const patterns = [
+      /(\d+[\.,]\d+)\s*p\b/i,
+      /(\d+[\.,]\d+)\s*pts/i,
+      /"totalPoints"\s*:\s*([\d.]+)/i,
+      /class="[^"]*points[^"]*"[^>]*>\s*([\d.,]+)/i,
+    ];
+    for (const pat of patterns) {
+      const m = pat.exec(html);
+      if (m) { pts = m[1].replace(',','.'); break; }
+    }
+
+    if (pts) {
+      document.getElementById('xcPts').textContent = parseFloat(pts).toFixed(2);
+      document.getElementById('xcLink').href = url;
+      resEl.classList.add('visible');
+      checkEnableAnalyze();
+    } else {
+      errEl.innerHTML = 'Points not found automatically.<br>Enter them manually below:';
+      errEl.style.display='block';
+    }
+  } catch(e) {
+    errEl.innerHTML = 'Network error. Enter points manually:';
+    errEl.style.display='block';
+  }
+  btn.textContent='Fetch'; btn.disabled=false;
+}
+
+function applyManualXcPoints() {
+  const val = parseFloat(document.getElementById('xcPtsManual').value);
+  if (isNaN(val) || val <= 0) return;
+  const url = document.getElementById('xcUrl').value.trim();
+  document.getElementById('xcPts').textContent = val.toFixed(2);
+  document.getElementById('xcLink').href = url || '#';
+  document.getElementById('xcResult').classList.add('visible');
+  document.getElementById('xcError').style.display='none';
+  checkEnableAnalyze();
+}
+
+// ── ANALYSE ───────────────────────────────────────────────────────────────────
+function checkEnableAnalyze() {
+  // xcPts is only "confirmed" when displayed in the result box (after OK or Enter)
+  const xcDisplay = document.getElementById('xcPts').textContent.trim();
+  const xcVal = parseFloat(xcDisplay);
+  const xcOk  = !isNaN(xcVal) && xcVal > 0;
+  document.getElementById('analyzeBtn').disabled = !(taskData && igcPoints.length && xcOk);
+}
+document.getElementById('analyzeBtn').addEventListener('click', analyze);
+
+function haversineM(la1,lo1,la2,lo2) {
+  const R=6371000, dLa=(la2-la1)*Math.PI/180, dLo=(lo2-lo1)*Math.PI/180;
+  const a=Math.sin(dLa/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLo/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function inCyl(pt,wp) { return haversineM(pt.lat,pt.lon,wp.lat,wp.lon)<=wp.radius; }
+
+function analyze() {
+  const wps  = taskData.waypoints;
+  const sss  = wps.find(w=>w.type==='SSS');
+  const goal = wps.find(w=>w.type==='GOAL');
+  const tps  = wps.filter(w=>w.type==='TP');
+
+  // 1. Pilot must pass through SSS — record index in trace
+  let sssIdx = -1;
+  if (sss) {
+    let minDist = Infinity;
+    for (let i=0; i<igcPoints.length; i++) {
+      const d = haversineM(igcPoints[i].lat, igcPoints[i].lon, sss.lat, sss.lon);
+      if (d < minDist) minDist = d;
+      if (d <= sss.radius) { sssIdx=i; break; }
+    }
+    console.log(`SSS check: radius=${sss.radius}m, closest approach=${minDist.toFixed(1)}m, passed=${sssIdx!==-1}`);
+  } else {
+    sssIdx = 0; // no SSS defined → start from beginning
+  }
+  const sssPassed = sssIdx !== -1;
+
+  // 2. After SSS, TPs can be validated in any order
+  const tpPassed  = new Array(tps.length).fill(false);
+  const tpIdxIGC  = new Array(tps.length).fill(-1); // index IGC de la validation
+  if (sssPassed) {
+    tps.forEach((tp, ti) => {
+      for (let i=sssIdx; i<igcPoints.length; i++) {
+        if (inCyl(igcPoints[i], tp)) { tpPassed[ti]=true; tpIdxIGC[ti]=i; break; }
+      }
+    });
+  }
+
+  // 3. GOAL: pilot must enter the cylinder AND land there (checked via exit tolerance below)
+  //    Goal is valid after ANY number of TPs (including 0 TPs after SSS)
+  //    We find the LAST entry into goal cylinder after the last validated TP
+  let goalCylinderReached = false; // pilot entered goal cylinder
+  let goalValidatedIdx = -1;       // IGC index of goal cylinder entry (after last TP)
+  if (sssPassed && goal) {
+    let lastTpIGC = sssIdx;
+    tpIdxIGC.forEach(idx => { if (idx > lastTpIGC) lastTpIGC = idx; });
+    for (let i = lastTpIGC; i < igcPoints.length; i++) {
+      if (inCyl(igcPoints[i], goal)) { goalCylinderReached = true; goalValidatedIdx = i; break; }
+    }
+  }
+
+  // Goal landing check: pilot must land in/near cylinder (checked in violations below)
+  // goalPassed = true only if cylinder reached AND landing is valid (set after exit check)
+  // For now mark as passed if cylinder reached; violations will block submit if landing bad
+  let goalPassed = goalCylinderReached;
+
+  // ── Score ──
+  let total = 0, html = '', tpCounter = 0;
+
+  // SSS
+  if (sss) {
+    const cls = sssPassed ? 'passed' : 'warning';
+    html += `<div class="score-item ${cls}"><span>Start SSS — ${sss.name}</span><span class="score-pts">${sssPassed?'✓ OK':'Not validated'}</span></div>`;
+    if (!sssPassed) html += `<div class="score-item warning" style="font-size:0.58rem"><span>No SSS validated: no points awarded</span></div>`;
+  }
+
+  // TPs (any order, any number)
+  tps.forEach((tp, ti) => {
+    tpCounter++;
+    const ok = sssPassed && tpPassed[ti];
+    if (ok) total += 100;
+    html += `<div class="score-item ${ok?'passed':'failed'}"><span>TP${tpCounter} — ${tp.name}</span><span class="score-pts">${ok?'+100':'+0'}</span></div>`;
+  });
+
+  // GOAL — 200 pts only if pilot entered cylinder AND landed correctly
+  // Landing validity determined below in violation checks; we flag it tentatively
+  if (goal) {
+    // goalPassed will be set false if landing violation found — scoring updated after checks
+    html += `<div class="score-item goal-score-item ${goalPassed?'passed':'failed'}"><span>Goal — ${goal.name}</span><span class="score-pts goal-pts">${goalPassed?'+200':'+0'}</span></div>`;
+  }
+
+  window._lastTrackPts = total;
+  document.getElementById('scoreTotal').textContent = total;
+  document.getElementById('scoreBreakdown').innerHTML = html;
+
+  // ── Redraw waypoints with pass/fail colors ──
+  taskLayers.clearLayers();
+  wps.forEach((wp, i) => {
+    let validated = false;
+    if (wp.type==='SSS')  validated = sssPassed;
+    if (wp.type==='TP')   validated = sssPassed && tpPassed[tps.indexOf(wp)];
+    if (wp.type==='GOAL') validated = goalPassed;
+
+    const color = validated ? '#00ff88'
+      : wp.type==='GOAL' ? '#4488ff'
+      : wp.type==='SSS'  ? '#00cc44'
+      : '#a0522d';
+
+    L.circle([wp.lat,wp.lon], {
+      radius:wp.radius, color, fillColor:color,
+      fillOpacity:validated?0.25:0.08, weight:validated?3:2
+    }).bindPopup(`<b>${wp.name}</b><br>${validated?'✅ Validated':wp.type==='SSS'&&!sssPassed?'⚠️ Start not validated':'❌ Not validated'}`)
+     .addTo(taskLayers);
+
+    const icon = L.divIcon({
+      className:'',
+      html:`<div class="custom-marker" style="width:22px;height:22px;background:${color}88;border-color:${color}">${validated?'✓':i+1}</div>`,
+      iconSize:[22,22], iconAnchor:[11,11]
+    });
+    L.marker([wp.lat,wp.lon],{icon}).addTo(taskLayers);
+  });
+
+  // ── IMPORTANT : redessiner la trace IGC (elle reste visible) ──
+  renderIGC(igcPoints);
+
+  // ── Flight validity checks ──
+  const violations = [];
+
+  // 1. Check flight ended before the goal deadline (from xctsk)
+  const lastPoint = igcPoints[igcPoints.length - 1];
+  const lastTimeSec = lastPoint ? lastPoint.time : 0;
+  const deadlineSec = taskData.deadlineSec;
+  if (deadlineSec !== null && lastTimeSec > deadlineSec) {
+    const dh = Math.floor(deadlineSec / 3600).toString().padStart(2,'0');
+    const dm = Math.floor((deadlineSec % 3600) / 60).toString().padStart(2,'0');
+    const fh = Math.floor(lastTimeSec / 3600).toString().padStart(2,'0');
+    const fm = Math.floor((lastTimeSec % 3600) / 60).toString().padStart(2,'0');
+    violations.push(`Flight ended at ${fh}:${fm} UTC, after the task deadline of ${dh}:${dm} UTC`);
+  }
+
+  // 2. Goal landing validation
+  // Pilot must land in/near cylinder. If they exit, check landing tolerance.
+  // If landing is invalid → goalPassed = false (no 200 pts) + violation blocks submit
+  if (goalCylinderReached && goal && goalValidatedIdx !== -1) {
+    let exitIdx = -1;
+    for (let i = goalValidatedIdx + 1; i < igcPoints.length; i++) {
+      if (!inCyl(igcPoints[i], goal)) { exitIdx = i; break; }
+    }
+
+    if (exitIdx !== -1) {
+      // Pilot exited — check if it's just a landing
+      const altAtExit = igcPoints[exitIdx].alt;
+      let maxAltAfterExit = altAtExit;
+      let maxDistFromGoal = 0;
+      for (let i = exitIdx; i < igcPoints.length; i++) {
+        if (igcPoints[i].alt > maxAltAfterExit) maxAltAfterExit = igcPoints[i].alt;
+        const distFromCenter = haversineM(igcPoints[i].lat, igcPoints[i].lon, goal.lat, goal.lon);
+        const distFromEdge = Math.max(0, distFromCenter - goal.radius);
+        if (distFromEdge > maxDistFromGoal) maxDistFromGoal = distFromEdge;
+      }
+      const altGain = maxAltAfterExit - altAtExit;
+      const landingOk = altGain <= 50 && maxDistFromGoal <= 1000;
+
+      if (!landingOk) {
+        // Revoke goal points — pilot did not land at goal
+        goalPassed = false;
+        const exitTime = igcPoints[exitIdx].time;
+        const eh = Math.floor(exitTime / 3600).toString().padStart(2,'0');
+        const em = Math.floor((exitTime % 3600) / 60).toString().padStart(2,'0');
+        // No violation added — pilot simply loses the 200 goal pts (already handled in scoring)
+        // Submit is still allowed
+      }
+      // else: landing outside but within tolerance → goalPassed stays true
+    }
+    // else: pilot never left cylinder → perfect landing → goalPassed stays true
+
+    // Update score and UI now that we know final goalPassed status
+    if (goalPassed) {
+      total += 200;
+      document.querySelector('.goal-score-item').className = 'score-item passed';
+      document.querySelector('.goal-pts').textContent = '+200';
+    } else {
+      document.querySelector('.goal-score-item').className = 'score-item failed';
+      document.querySelector('.goal-pts').textContent = '+0';
+    }
+    window._lastTrackPts = total;
+    document.getElementById('scoreTotal').textContent = total;
+  } else if (goalCylinderReached && goalPassed) {
+    // No exit at all — perfect landing in cylinder
+    total += 200;
+    window._lastTrackPts = total;
+    document.getElementById('scoreTotal').textContent = total;
+  }
+
+  // ── Summary card ──
+  updateSummary(total, violations);
+}
+
+function updateSummary(trackPts, violations) {
+  const card = document.getElementById('summaryCard');
+  card.classList.add('visible');
+  window._flightViolations = violations || [];
+
+  // Pilot name & date
+  const pilotName = document.getElementById('pilotName').textContent || '—';
+  const pilotDate = document.getElementById('pilotDate').textContent.replace('📅 ', '') || '';
+  document.getElementById('summaryName').textContent = pilotName;
+  document.getElementById('summaryDate').textContent = pilotDate;
+
+  // Track points
+  document.getElementById('summaryTrackPts').textContent = trackPts + ' pts';
+
+  // XContest points if available
+  const xcEl = document.getElementById('xcPts');
+  const xcVal = xcEl.textContent.trim();
+  const xcRow = document.getElementById('summaryXcRow');
+  if (xcVal && xcVal !== '—') {
+    document.getElementById('summaryXcPts').textContent = xcVal;
+    xcRow.style.display = 'flex';
+  } else {
+    xcRow.style.display = 'none';
+  }
+
+  // Show violations if any
+  const violBox = document.getElementById('violationBox');
+  if (violations && violations.length > 0) {
+    violBox.style.display = 'block';
+    violBox.innerHTML = violations.map(v =>
+      `⚠️ Flight not valid because of: <b>${v}</b>.`
+    ).join('<br>') +
+    '<br><br>Please contact the organiser to check if your flight can be submitted.';
+  } else {
+    violBox.style.display = 'none';
+  }
+
+  updateSummaryButtons();
+}
+
+// ── SUBMIT ───────────────────────────────────────────────────────────────────
+function updateSummaryButtons() {
+  const card = document.getElementById('summaryCard');
+  const hasViolations = window._flightViolations && window._flightViolations.length > 0;
+  const isVisible = card.classList.contains('visible');
+  document.getElementById('submitBtn').disabled = !isVisible || hasViolations;
+}
+
+document.getElementById('submitBtn').addEventListener('click', async () => {
+  const name = document.getElementById('summaryName').textContent.trim();
+  const date = document.getElementById('summaryDate').textContent.trim().replace('📅 ', '');
+  const xcUrl = document.getElementById('xcUrl').value.trim();
+
+  if (!name || name === '—') { alert('No pilot name found. Load an IGC file first.'); return; }
+
+  const trackPts = window._lastTrackPts || 0;
+
+  const manualVal = parseFloat(document.getElementById('xcPtsManual').value);
+  const displayVal = parseFloat(document.getElementById('xcPts').textContent);
+  const xcPts = (!isNaN(manualVal) && manualVal > 0) ? manualVal
+              : (!isNaN(displayVal) && displayVal > 0) ? displayVal
+              : null;
+
+  // Compute canonical key from waypoints (groups same task regardless of display name)
+  const wpFingerprint = (taskData ? taskData.waypoints
+    .filter(w => w.type !== 'TAKEOFF')
+    .map(w => w.name + ':' + w.radius)
+    .sort()
+    .join(',') : '');
+  const compKey = date + '||' + wpFingerprint;
+
+  // Default competition name from waypoints
+  const defaultCompName = taskData ? taskData.waypoints
+    .filter(w => w.type !== 'TAKEOFF')
+    .map(w => w.name + '(' + w.radius + 'm)')
+    .join(' · ') : 'Unknown Competition';
+
+  try {
+    const btn = document.getElementById('submitBtn');
+    btn.textContent = '⏳ Submitting...';
+    btn.disabled = true;
+
+    // DocId based on compKey + pilot name
+    const docId = (compKey + '_' + name).toLowerCase().replace(/[^a-z0-9]+/g, '_');
+
+    // Preserve custom competition name if already set for this group.
+    // Strategy: fetch ANY existing doc that shares the same compKey prefix.
+    // We do this by fetching all scores and filtering client-side (avoids composite index).
+    let compName = defaultCompName;
+    try {
+      const snapshot = await window.db.collection('scores').get();
+      const existing = snapshot.docs.find(d => d.data().compKey === compKey);
+      if (existing) {
+        const existingName = existing.data().compName;
+        if (existingName && existingName !== defaultCompName) {
+          compName = existingName;
+        }
+      }
+    } catch(e) { /* use default if fetch fails */ }
+
+    const entry = { name, date, compName, compKey, wpFingerprint, trackPts, xcPts, xcUrl, submittedAt: new Date().toISOString() };
+    entry.docId = docId;
+    console.log('Submitting to Firestore:', docId, entry);
+    await window.db.collection('scores').doc(docId).set(entry);
+
+    window.location.href = 'score.html';
+  } catch(err) {
+    alert('Error submitting score: ' + err.message);
+    document.getElementById('submitBtn').textContent = '📤 Submit';
+    document.getElementById('submitBtn').disabled = false;
+  }
+});
+
+function showSubmitMsg(msg, ok) {
+  const el = document.getElementById('submitMsg');
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.style.background = ok ? 'rgba(0,204,68,0.1)' : 'rgba(255,71,87,0.1)';
+  el.style.color = ok ? 'var(--green)' : 'var(--red)';
+  el.style.border = ok ? '1px solid rgba(0,204,68,0.3)' : '1px solid rgba(255,71,87,0.3)';
+  setTimeout(() => { el.style.display='none'; }, 4000);
+}
+
+// ── WAYPOINTS TOGGLE ─────────────────────────────────────────────────────────
+function toggleWaypoints() {
+  const list   = document.getElementById('waypointsList');
+  const landBy = document.getElementById('landByRow');
+  const btn    = document.getElementById('wpToggle');
+  const isHidden = list.style.display === 'none';
+  list.style.display   = isHidden ? 'flex' : 'none';
+  landBy.style.display = isHidden ? 'block' : 'none';
+  btn.textContent = isHidden ? '−' : '+';
+}
+
+// ── CHAMPIONSHIP & TASK MANAGEMENT ──────────────────────────────────────────
+
+let currentChampId = null;
+let currentTaskId  = null;
+
+// Load all championships into dropdown
+async function loadChampionships() {
+  const sel = document.getElementById('champSelect');
+  sel.innerHTML = '<option value="">— Select a championship —</option>';
+  try {
+    const snap = await window.db.collection('championships').orderBy('name').get();
+    snap.docs.forEach(doc => {
+      const opt = document.createElement('option');
+      opt.value = doc.id;
+      opt.textContent = doc.data().name;
+      sel.appendChild(opt);
+    });
+  } catch(e) { console.error('loadChampionships:', e); }
+}
+
+// Load tasks for selected championship
+async function loadTasks(champId) {
+  const listEl = document.getElementById('taskList');
+  listEl.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    const snap = await window.db.collection('tasks')
+      .where('championshipId', '==', champId).get();
+    if (snap.empty) {
+      listEl.innerHTML = '<div class="empty-state">No tasks yet</div>';
+      return;
+    }
+    // Sort by date desc
+    const tasks = snap.docs.map(d => ({id:d.id, ...d.data()}));
+    tasks.sort((a,b) => (b.date||'').localeCompare(a.date||''));
+    listEl.innerHTML = '';
+    tasks.forEach(task => {
+      const card = document.createElement('div');
+      card.className = 'task-card';
+      card.dataset.taskId = task.id;
+      card.innerHTML = `
+        <div style="flex:1;min-width:0">
+          <div class="task-date">📅 ${task.date || '?'} · ${task.compName || 'Task'}</div>
+          <div class="task-wps">${task.wpSummary || ''}</div>
+        </div>
+        <button class="del-btn" data-task-id="${task.id}" title="Delete task">✕</button>`;
+      card.addEventListener('click', e => {
+        if (e.target.classList.contains('del-btn')) return;
+        selectTask(task);
+        document.querySelectorAll('.task-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+      });
+      card.querySelector('.del-btn').addEventListener('click', async e => {
+        e.stopPropagation();
+        if (!confirm('Delete this task? Submitted scores will remain.')) return;
+        await window.db.collection('tasks').doc(task.id).delete();
+        loadTasks(champId);
+      });
+      listEl.appendChild(card);
+    });
+  } catch(e) {
+    console.error('loadTasks:', e);
+    listEl.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
+  }
+}
+
+// Select a task from Firestore — load xctsk JSON from stored data
+function selectTask(task) {
+  currentTaskId = task.id;
+  if (task.xctskJson) {
+    try {
+      taskData = parseXCTaskJSON(task.xctskJson);
+      renderTask(taskData);
+      document.getElementById('xctskBadge').innerHTML =
+        `<div class="file-badge">✓ ${task.compName || 'Task'} (${task.date})</div>`;
+      checkEnableAnalyze();
+      // Hide the upload section since task is loaded
+      document.getElementById('xctskSection').style.display = 'none';
+    } catch(e) { alert('Error loading task: ' + e.message); }
+  }
+}
+
+// Championship selector change
+document.getElementById('champSelect').addEventListener('change', async function() {
+  currentChampId = this.value || null;
+  currentTaskId  = null;
+  document.getElementById('champDelBtn').disabled = !currentChampId;
+  document.getElementById('taskSection').style.display = currentChampId ? 'block' : 'none';
+  document.getElementById('xctskSection').style.display = currentChampId ? 'none' : 'block';
+  if (currentChampId) loadTasks(currentChampId);
+});
+
+// New championship
+document.getElementById('champNewBtn').addEventListener('click', async () => {
+  const name = prompt('Championship name:');
+  if (!name || !name.trim()) return;
+  try {
+    await window.db.collection('championships').add({
+      name: name.trim(),
+      createdAt: new Date().toISOString()
+    });
+    await loadChampionships();
+    // Auto-select new one
+    const sel = document.getElementById('champSelect');
+    for (const opt of sel.options) {
+      if (opt.textContent === name.trim()) { sel.value = opt.value; sel.dispatchEvent(new Event('change')); break; }
+    }
+  } catch(e) { alert('Error: ' + e.message); }
+});
+
+// Delete championship
+document.getElementById('champDelBtn').addEventListener('click', async () => {
+  if (!currentChampId) return;
+  const champName = document.getElementById('champSelect').selectedOptions[0]?.textContent;
+  if (!confirm(`Delete championship "${champName}"?
+This will NOT delete submitted scores.`)) return;
+  try {
+    await window.db.collection('championships').doc(currentChampId).delete();
+    currentChampId = null;
+    currentTaskId  = null;
+    document.getElementById('taskSection').style.display = 'none';
+    document.getElementById('xctskSection').style.display = 'block';
+    await loadChampionships();
+  } catch(e) { alert('Error: ' + e.message); }
+});
+
+// New task button → show file picker
+document.getElementById('taskNewBtn').addEventListener('click', () => {
+  document.getElementById('xctskSection').style.display = 'block';
+  document.getElementById('xctskInputChamp').click();
+});
+
+// ── RESTORE LAST TASK ON PAGE LOAD ───────────────────────────────────────────
+// Load championships when page starts
+loadChampionships();
+
+
+(function restoreLastTask() {
+  try {
+    const saved = localStorage.getItem('paratrace_last_task');
+    if (!saved) return;
+    const {raw, label} = JSON.parse(saved);
+    taskData = parseXCTaskJSON(raw);
+    renderTask(taskData);
+    const shortLabel = label.length > 40 ? label.slice(0,37) + '...' : label;
+    document.getElementById('xctskBadge').innerHTML =
+      `<div class="file-badge">✓ ${shortLabel} <span style="opacity:0.5">(restored)</span></div>`;
+    checkEnableAnalyze();
+  } catch(e) { /* ignore */ }
+})();
+
+// ── SAVE TASK TO FIRESTORE ────────────────────────────────────────────────────
+async function saveTaskToFirestore(xctskJson) {
+  if (!currentChampId) return;
+  try {
+    // Compute fingerprint
+    const wps = parseXCTaskJSON(xctskJson).waypoints.filter(w => w.type !== 'TAKEOFF');
+    const wpFingerprint = wps.map(w => w.name + ':' + w.radius).sort().join(',');
+    const wpSummary     = wps.map(w => w.name).join(' · ');
+    const compName      = wps.map(w => w.name + '(' + w.radius + 'm)').join(' · ');
+
+    // Check if task already exists for this championship + fingerprint (client-side filter)
+    const snap = await window.db.collection('tasks')
+      .where('championshipId', '==', currentChampId).get();
+    const existing = snap.docs.find(d => d.data().wpFingerprint === wpFingerprint);
+
+    if (existing) {
+      // Task exists — just set currentTaskId
+      currentTaskId = existing.id;
+      console.log('Task already exists:', currentTaskId);
+      loadTasks(currentChampId);
+      return;
+    }
+
+    // New task — save xctsk JSON to Firestore
+    const docRef = await window.db.collection('tasks').add({
+      championshipId: currentChampId,
+      wpFingerprint,
+      wpSummary,
+      compName,
+      xctskJson,
+      date: null, // will be set when first score submitted
+      createdAt: new Date().toISOString()
+    });
+    currentTaskId = docRef.id;
+    console.log('Task saved:', currentTaskId);
+    loadTasks(currentChampId);
+  } catch(e) { console.error('saveTaskToFirestore:', e); }
+}
+
+// ── DRAG & DROP ───────────────────────────────────────────────────────────────
+['xctskZone','igcZone'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('drag-over'); });
+  el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+  el.addEventListener('drop', e => {
+    e.preventDefault(); el.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0]; if (!file) return;
+    const inputId = id==='xctskZone' ? 'xctskInput' : 'igcInput';
+    const dt = new DataTransfer(); dt.items.add(file);
+    document.getElementById(inputId).files = dt.files;
+    document.getElementById(inputId).dispatchEvent(new Event('change'));
+  });
+});
+</script>
+</body>
+</html>
