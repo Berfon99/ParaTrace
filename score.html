@@ -6,154 +6,69 @@
 <title>AIR³ TDD Task Analyser · Scores</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
-
   :root {
-    --sky: #0a1628; --horizon: #0d2444; --cloud: #e8f4fd;
-    --accent: #00d4ff; --gold: #ffd700; --green: #00cc44;
-    --orange: #ff8c00; --blue: #4488ff; --red: #ff4757;
-    --text: #c8dff0; --panel: rgba(13,36,68,0.97);
+    --sky:#0a1628;--horizon:#0d2444;--cloud:#e8f4fd;
+    --accent:#00d4ff;--gold:#ffd700;--green:#00cc44;
+    --orange:#ff8c00;--blue:#4488ff;--red:#ff4757;
+    --text:#c8dff0;
   }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    background: var(--sky); color: var(--text);
-    font-family: 'Space Mono', monospace;
-    min-height: 100vh; display: flex; flex-direction: column;
-  }
-
-  header {
-    background: linear-gradient(135deg, #061018 0%, var(--horizon) 100%);
-    padding: 0.9rem 2rem; display: flex; align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid rgba(0,212,255,0.2);
-    box-shadow: 0 4px 30px rgba(0,0,0,0.5);
-  }
-
-  .logo { font-family:'Syne',sans-serif; font-weight:800; font-size:1.4rem; color:var(--accent); }
-  .logo span { color: var(--gold); }
-  .tagline { font-size:0.62rem; color:rgba(200,223,240,0.4); letter-spacing:0.1em; text-transform:uppercase; }
-
-  .back-btn {
-    display:inline-flex; align-items:center; gap:0.4rem;
-    background:rgba(0,212,255,0.1); border:1px solid rgba(0,212,255,0.25);
-    border-radius:6px; padding:0.45rem 0.8rem;
-    color:var(--accent); text-decoration:none;
-    font-family:'Space Mono',monospace; font-size:0.65rem; font-weight:700;
-    letter-spacing:0.05em; transition:all 0.2s;
-  }
-  .back-btn:hover { background:rgba(0,212,255,0.2); }
-
-  main { flex:1; padding:2rem; max-width:1100px; margin:0 auto; width:100%; }
-
-  .page-title {
-    font-family:'Syne',sans-serif; font-size:1.6rem; font-weight:800;
-    color:var(--cloud); margin-bottom:0.3rem;
-  }
-  .page-sub { font-size:0.65rem; color:rgba(200,223,240,0.4); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:2rem; }
-
-  /* Date group */
-  .date-group { margin-bottom:2rem; }
-  .date-header {
-    font-family:'Syne',sans-serif; font-size:0.75rem; font-weight:700;
-    color:var(--accent); letter-spacing:0.12em; text-transform:uppercase;
-    padding:0.5rem 0; border-bottom:1px solid rgba(0,212,255,0.2);
-    margin-bottom:0.8rem; display:flex; align-items:center; gap:0.6rem;
-  }
-  .date-header::before { content:'📅'; font-size:0.9rem; }
-
-  /* Table */
-  .score-table { width:100%; border-collapse:collapse; }
-
-  .score-table thead tr {
-    background:rgba(0,212,255,0.06);
-  }
-  .score-table th {
-    font-size:0.6rem; letter-spacing:0.1em; text-transform:uppercase;
-    color:rgba(200,223,240,0.5); padding:0.6rem 1rem; text-align:left;
-    border-bottom:1px solid rgba(0,212,255,0.15); font-weight:700;
-  }
-  .score-table th.right { text-align:right; }
-
-  .score-table tbody tr {
-    border-bottom:1px solid rgba(255,255,255,0.04);
-    transition:background 0.15s;
-  }
-  .score-table tbody tr:hover { background:rgba(255,255,255,0.03); }
-
-  .score-table td {
-    padding:0.75rem 1rem; font-size:0.72rem; vertical-align:middle;
-  }
-
-  .rank {
-    font-family:'Syne',sans-serif; font-weight:800; font-size:0.9rem;
-    color:rgba(200,223,240,0.25); width:40px;
-  }
-  .rank.gold   { color:var(--gold); }
-  .rank.silver { color:#aaa; }
-  .rank.bronze { color:#cd7f32; }
-
-  .pilot-name {
-    font-family:'Syne',sans-serif; font-weight:700; font-size:0.85rem;
-    color:var(--cloud);
-  }
-  .xc-link-cell a {
-    color:var(--accent); text-decoration:none; font-size:0.62rem;
-    opacity:0.7; transition:opacity 0.15s;
-  }
-  .xc-link-cell a:hover { opacity:1; }
-
-  .pts-cell { text-align:right; }
-  .pts-track {
-    font-family:'Syne',sans-serif; font-weight:700; font-size:1rem;
-    color:var(--orange);
-  }
-  .pts-xc {
-    font-family:'Syne',sans-serif; font-weight:700; font-size:1rem;
-    color:var(--accent);
-  }
-  .pts-total {
-    font-family:'Syne',sans-serif; font-weight:800; font-size:1.05rem;
-    color:var(--gold);
-  }
-  .pts-computed {
-    font-family:'Syne',sans-serif; font-weight:700; font-size:1rem;
-    color:var(--gold);
-  }
-  .pts-na { color:rgba(200,223,240,0.2); font-size:0.65rem; }
-
-  .empty-state {
-    text-align:center; padding:4rem 2rem;
-    color:rgba(200,223,240,0.3); font-size:0.8rem; line-height:2;
-  }
-  .empty-icon { font-size:3rem; display:block; margin-bottom:1rem; opacity:0.4; }
-
-  .toolbar {
-    display:flex; justify-content:flex-end; gap:0.6rem; margin-bottom:1.5rem;
-  }
-  .tool-btn {
-    background:rgba(255,71,87,0.1); border:1px solid rgba(255,71,87,0.25);
-    border-radius:6px; padding:0.4rem 0.8rem; color:var(--red);
-    font-family:'Space Mono',monospace; font-size:0.62rem; font-weight:700;
-    cursor:pointer; letter-spacing:0.05em; transition:all 0.2s;
-  }
-  .tool-btn:hover { background:rgba(255,71,87,0.2); }
-
-  .submitted-at { font-size:0.55rem; color:rgba(200,223,240,0.25); margin-top:0.1rem; }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--sky);color:var(--text);font-family:'Space Mono',monospace;min-height:100vh;display:flex;flex-direction:column;}
+  header{background:linear-gradient(135deg,#061018 0%,var(--horizon) 100%);padding:0.9rem 2rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(0,212,255,0.2);box-shadow:0 4px 30px rgba(0,0,0,0.5);}
+  .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;color:var(--accent);}
+  .logo span{color:var(--gold);}
+  .tagline{font-size:0.62rem;color:rgba(200,223,240,0.4);letter-spacing:0.1em;text-transform:uppercase;}
+  .nav-btns{display:flex;gap:0.6rem;align-items:center;}
+  .btn-blue{display:inline-flex;align-items:center;gap:0.4rem;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.25);border-radius:6px;padding:0.45rem 0.9rem;color:var(--accent);text-decoration:none;font-family:'Space Mono',monospace;font-size:0.65rem;font-weight:700;letter-spacing:0.05em;transition:all 0.2s;}
+  .btn-blue:hover{background:rgba(0,212,255,0.2);}
+  .btn-gold{display:inline-flex;align-items:center;gap:0.4rem;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:6px;padding:0.45rem 0.9rem;color:var(--gold);text-decoration:none;font-family:'Space Mono',monospace;font-size:0.65rem;font-weight:700;letter-spacing:0.05em;transition:all 0.2s;}
+  .btn-gold:hover{background:rgba(255,215,0,0.2);}
+  main{flex:1;padding:2rem;max-width:1200px;margin:0 auto;width:100%;}
+  .page-title{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--cloud);margin-bottom:0.3rem;}
+  .page-sub{font-size:0.65rem;color:rgba(200,223,240,0.4);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:2rem;}
+  .date-group{margin-bottom:2.5rem;}
+  .date-header{font-family:'Syne',sans-serif;font-size:0.75rem;font-weight:700;color:var(--accent);letter-spacing:0.1em;text-transform:uppercase;padding:0.5rem 0;border-bottom:1px solid rgba(0,212,255,0.2);margin-bottom:0.8rem;display:flex;align-items:center;justify-content:space-between;gap:0.6rem;}
+  .score-table{width:100%;border-collapse:collapse;}
+  .score-table thead tr{background:rgba(0,212,255,0.06);}
+  .score-table th{font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;color:rgba(200,223,240,0.5);padding:0.6rem 1rem;text-align:left;border-bottom:1px solid rgba(0,212,255,0.15);font-weight:700;}
+  .score-table th.right{text-align:right;}
+  .score-table tbody tr{border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.15s;}
+  .score-table tbody tr:hover{background:rgba(255,255,255,0.03);}
+  .score-table td{padding:0.75rem 1rem;font-size:0.72rem;vertical-align:middle;}
+  .rank{font-family:'Syne',sans-serif;font-weight:800;font-size:0.9rem;color:rgba(200,223,240,0.25);width:40px;}
+  .rank.gold{color:var(--gold);}
+  .rank.silver{color:#aaa;}
+  .rank.bronze{color:#cd7f32;}
+  .pilot-name{font-family:'Syne',sans-serif;font-weight:700;font-size:0.85rem;color:var(--cloud);}
+  .submitted-at{font-size:0.55rem;color:rgba(200,223,240,0.25);margin-top:0.1rem;}
+  .pts-cell{text-align:right;}
+  .pts-track{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;color:var(--orange);}
+  .pts-xc{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;color:var(--accent);}
+  .pts-computed{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;color:var(--gold);}
+  .pts-total{font-family:'Syne',sans-serif;font-weight:800;font-size:1.05rem;color:var(--gold);}
+  .pts-na{color:rgba(200,223,240,0.2);font-size:0.65rem;}
+  .xc-link-cell a{color:var(--accent);text-decoration:none;font-size:0.62rem;opacity:0.7;transition:opacity 0.15s;}
+  .xc-link-cell a:hover{opacity:1;}
+  .empty-state{text-align:center;padding:4rem 2rem;color:rgba(200,223,240,0.3);font-size:0.8rem;line-height:2;}
+  .empty-icon{font-size:3rem;display:block;margin-bottom:1rem;opacity:0.4;}
+  .tool-btn{background:rgba(255,71,87,0.1);border:1px solid rgba(255,71,87,0.25);border-radius:6px;padding:0.3rem 0.7rem;color:var(--red);font-family:'Space Mono',monospace;font-size:0.58rem;font-weight:700;cursor:pointer;letter-spacing:0.05em;transition:all 0.2s;}
+  .tool-btn:hover{background:rgba(255,71,87,0.2);}
+  .comp-name-edit{cursor:pointer;border-bottom:1px dashed rgba(0,212,255,0.4);}
+  footer{text-align:center;padding:1.5rem;border-top:1px solid rgba(0,212,255,0.08);font-size:0.65rem;color:rgba(200,223,240,0.2);}
 </style>
+
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyAo6MSWOQXVQuCuluk5hhJY36TGvNqc8L8",
-    authDomain: "air3tddanalyser.firebaseapp.com",
-    projectId: "air3tddanalyser",
-    storageBucket: "air3tddanalyser.firebasestorage.app",
-    messagingSenderId: "40508185051",
-    appId: "1:40508185051:web:6b7c9069e4d4f94e4f2ffe"
-  };
-  firebase.initializeApp(firebaseConfig);
+  firebase.initializeApp({
+    apiKey:"AIzaSyAo6MSWOQXVQuCuluk5hhJY36TGvNqc8L8",
+    authDomain:"air3tddanalyser.firebaseapp.com",
+    projectId:"air3tddanalyser",
+    storageBucket:"air3tddanalyser.firebasestorage.app",
+    messagingSenderId:"40508185051",
+    appId:"1:40508185051:web:6b7c9069e4d4f94e4f2ffe"
+  });
   window.db = firebase.firestore();
 </script>
 </head>
@@ -161,78 +76,65 @@
 
 <header>
   <div>
-    <a href="https://www.fly-air3.com/" target="_blank" style="text-decoration:none"><div class="logo">AIR³ TDD<span> Task Analyser</span></div></a>
+    <a href="https://www.fly-air3.com/" target="_blank" style="text-decoration:none">
+      <div class="logo">AIR³ TDD<span> Task Analyser</span></div>
+    </a>
     <div class="tagline">powered by Snowy</div>
   </div>
-  <div style="display:flex;gap:0.6rem;align-items:center">
-    <a href="rules.html" style="
-      display:inline-flex;align-items:center;gap:0.4rem;
-      background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.35);
-      border-radius:6px;padding:0.35rem 0.8rem;
-      color:#ffd700;text-decoration:none;
-      font-family:'Space Mono',monospace;font-size:0.65rem;font-weight:700;
-      letter-spacing:0.05em;
-    ">📋 RULES</a>
-    <a href="index.html" class="back-btn">← Back to Analyzer</a>
+  <div class="nav-btns">
+    <a href="rules.html" class="btn-gold">📋 RULES</a>
+    <a href="index.html" class="btn-blue">← Back to Analyzer</a>
   </div>
 </header>
 
 <main>
-  <div class="page-title">🏅 TDD Score Board</div>
-  <div class="page-sub">Results by date · Updated on each submission</div>
-
-  <div class="toolbar" id="toolbar"></div>
-
+  <div class="page-title">🏅 Championship Scores</div>
+  <div class="page-sub">AIR³ TDD · Results by competition</div>
   <div id="scoresContainer">
-    <div class="empty-state">
-      <span class="empty-icon">🪂</span>
-      No scores submitted yet.<br>
-      Go back to the analyzer, load a task + IGC track,<br>
-      run the analysis and click <b>Submit</b>.
-    </div>
+    <div class="empty-state"><span class="empty-icon">⏳</span>Loading scores...</div>
   </div>
 </main>
 
+<footer>
+  ⚡ Powered by Snowy &nbsp;·&nbsp;
+  <a href="https://www.fly-air3.com/" target="_blank" style="color:inherit;text-decoration:none">AIR³ Paragliding</a>
+</footer>
+
 <script>
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function parsePoints(val) {
+  if (val === null || val === undefined || val === '' || val === '—') return null;
+  if (typeof val === 'number') return isNaN(val) ? null : val;
+  const n = parseFloat(String(val).replace(/[^0-9.]/g, ''));
+  return isNaN(n) ? null : n;
+}
+
+function rankClass(i) {
+  return i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+}
+
+// ── Load from Firestore ───────────────────────────────────────────────────────
 async function loadScores() {
   const snapshot = await window.db.collection('scores').get();
   return snapshot.docs.map(doc => {
-    const data = doc.data();
-    // Always use the real Firestore document ID (most reliable)
-    data._firestoreId = doc.id;
-    return data;
+    const d = doc.data();
+    d._firestoreId = doc.id;
+    return d;
   });
 }
 
-function groupByCompAndDate(entries) {
+// ── Group by compKey (canonical) or compName+date (fallback) ─────────────────
+function groupEntries(entries) {
   const groups = {};
   entries.forEach(e => {
-    // Use compKey (waypoint fingerprint) for canonical grouping if available
-    // fallback to compName+date for old entries
-    const key = e.compKey || ((e.compName || 'Unknown Competition') + '||' + (e.date || 'Unknown date'));
+    const key = e.compKey || ((e.compName || 'Unknown Competition') + '||' + (e.date || '?'));
     if (!groups[key]) groups[key] = [];
     groups[key].push(e);
   });
   return groups;
 }
 
-function parsePoints(val) {
-  if (val === null || val === undefined || val === '' || val === '—') return null;
-  // Already a number
-  if (typeof val === 'number') return isNaN(val) || val === 0 ? null : val;
-  // String: strip everything except digits and dot
-  const s = String(val).replace(/[^0-9.]/g, '');
-  const n = parseFloat(s);
-  return isNaN(n) || n === 0 ? null : n;
-}
-
-function rankClass(i) {
-  if (i === 0) return 'gold';
-  if (i === 1) return 'silver';
-  if (i === 2) return 'bronze';
-  return '';
-}
-
+// ── Render ────────────────────────────────────────────────────────────────────
 async function renderScores() {
   const container = document.getElementById('scoresContainer');
   container.innerHTML = '<div class="empty-state"><span class="empty-icon">⏳</span>Loading scores...</div>';
@@ -242,138 +144,105 @@ async function renderScores() {
     entries = await loadScores();
     console.log('Loaded', entries.length, 'entries:', entries);
   } catch(err) {
-    container.innerHTML = `<div class="empty-state"><span class="empty-icon">❌</span>Error loading scores:<br>${err.message}</div>`;
+    container.innerHTML = `<div class="empty-state"><span class="empty-icon">❌</span>Error loading scores:<br><b>${err.message}</b></div>`;
     return;
   }
 
   if (!entries.length) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <span class="empty-icon">🪂</span>
-        No scores submitted yet.<br>
-        Go back to the analyzer, load a task + IGC track,<br>
-        run the analysis and click <b>Submit</b>.
-      </div>`;
+    container.innerHTML = `<div class="empty-state"><span class="empty-icon">🪂</span>No scores submitted yet.<br>Go back to the analyzer, load a task + IGC track,<br>run the analysis and click <b>Submit</b>.</div>`;
     return;
   }
 
-  // Sort entries by date desc
-  entries.sort((a, b) => {
-    const parseDate = d => {
-      if (!d) return new Date(0);
-      const p = d.split('/');
-      return p.length === 3 ? new Date(`${p[2]}-${p[1]}-${p[0]}`) : new Date(0);
-    };
-    return parseDate(b.date) - parseDate(a.date);
-  });
+  // Sort by date desc
+  const parseDate = d => {
+    if (!d) return new Date(0);
+    const p = d.split('/');
+    return p.length === 3 ? new Date(`${p[2]}-${p[1]}-${p[0]}`) : new Date(0);
+  };
+  entries.sort((a, b) => parseDate(b.date) - parseDate(a.date));
 
-  // Group by competition + date
-  const groups = groupByCompAndDate(entries);
+  const groups = groupEntries(entries);
   let html = '';
 
   for (const [groupKey, pilots] of Object.entries(groups)) {
-    // Display name = most recently used compName for this group (editable)
-    const displayDate = pilots[0].date || 'Unknown date';
-    const displayName = pilots.slice().sort((a,b) =>
-      new Date(b.submittedAt||0) - new Date(a.submittedAt||0)
-    )[0].compName || 'Unknown Competition';
+    // Use most recently submitted entry for display info
+    const byRecent = pilots.slice().sort((a,b) => new Date(b.submittedAt||0) - new Date(a.submittedAt||0));
+    const displayDate = byRecent[0].date || 'Unknown date';
+    const displayName = byRecent[0].compName || 'Unknown Competition';
 
-    // Reference XContest = best XC among pilots with the MOST trackPts
-    // Pilots with fewer trackPts have their XC capped at refXc
-    const maxTrackPts = Math.max(0, ...pilots.map(p => parsePoints(p.trackPts) || 0));
-    const topPilots   = pilots.filter(p => (parsePoints(p.trackPts) || 0) === maxTrackPts);
-    const refXc       = Math.max(0, ...topPilots.map(p => parsePoints(p.xcPts) || 0));
+    // Firestore IDs for this group
+    const ids = pilots.map(p => p._firestoreId).filter(Boolean).join('|');
 
-    function effectiveXc(p) {
+    // ── Scoring ──────────────────────────────────────────────────────────────
+    // Max trackPts in group
+    const maxTrack = Math.max(0, ...pilots.map(p => parsePoints(p.trackPts) || 0));
+    // Best XContest among pilots with maxTrack → reference for 500 pts
+    const topPilots = pilots.filter(p => (parsePoints(p.trackPts) || 0) === maxTrack);
+    const refXc = Math.max(0, ...topPilots.map(p => parsePoints(p.xcPts) || 0));
+
+    // Effective XC: capped to refXc if pilot has fewer track pts than leader
+    function effXc(p) {
       const xc = parsePoints(p.xcPts) || 0;
       const tr = parsePoints(p.trackPts) || 0;
-      // Cap XC to refXc if this pilot has fewer track points than the leader
-      return tr < maxTrackPts ? Math.min(xc, refXc) : xc;
+      return tr < maxTrack ? Math.min(xc, refXc) : xc;
     }
 
-    // Sort by total score desc
+    // Sort pilots by total desc
     pilots.sort((a, b) => {
-      const compA = refXc > 0 ? Math.round((effectiveXc(a) / refXc) * 500) : 0;
-      const compB = refXc > 0 ? Math.round((effectiveXc(b) / refXc) * 500) : 0;
-      const totalA = (parsePoints(a.trackPts) || 0) + compA;
-      const totalB = (parsePoints(b.trackPts) || 0) + compB;
-      return totalB - totalA;
+      const ca = refXc > 0 ? Math.round((effXc(a) / refXc) * 500) : 0;
+      const cb = refXc > 0 ? Math.round((effXc(b) / refXc) * 500) : 0;
+      return ((parsePoints(b.trackPts)||0) + cb) - ((parsePoints(a.trackPts)||0) + ca);
     });
 
-    // Real Firestore doc IDs for deletion
-    const groupDocIds = pilots.map(p => p._firestoreId || p.docId ||
-      ((p.compName || 'Unknown Competition') + '_' + p.name).toLowerCase().replace(/[^a-z0-9]+/g, '_')
-    );
-    const safeDocIds = groupDocIds.join('|');
-
     html += `<div class="date-group">
-      <div class="date-header" style="justify-content:space-between;align-items:center">
+      <div class="date-header">
         <span>📅 ${displayDate} &nbsp;·&nbsp; 🏁
-          <span class="comp-name-display" data-groupkey="${groupKey}" style="cursor:pointer;border-bottom:1px dashed rgba(0,212,255,0.4)" title="Click to rename">${displayName}</span>
+          <span class="comp-name-edit" data-ids="${ids}" title="Click to rename">${displayName}</span>
         </span>
-        <button class="tool-btn clear-group-btn" style="font-size:0.55rem;padding:0.2rem 0.5rem;margin-left:1rem"
-          data-docids="${safeDocIds}">🗑 Clear</button>
+        <button class="tool-btn clear-btn" data-ids="${ids}">🗑 Clear</button>
       </div>
       <table class="score-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Pilot</th>
-            <th class="right">XContest Pts</th>
-            <th class="right">Computed XC Pts<br><span style="font-size:0.5rem;opacity:0.6">max 500 pts</span></th>
-            <th class="right">Track Points</th>
-            <th class="right">Total Score</th>
-            <th>XContest Link</th>
-          </tr>
-        </thead>
+        <thead><tr>
+          <th>#</th><th>Pilot</th>
+          <th class="right">XContest Pts</th>
+          <th class="right">Computed XC<br><span style="font-size:0.5rem;opacity:0.5">max 500</span></th>
+          <th class="right">Track Pts</th>
+          <th class="right">Total</th>
+          <th>XContest Link</th>
+        </tr></thead>
         <tbody>`;
 
     pilots.forEach((p, i) => {
-      const trackPts = parsePoints(p.trackPts);
-      const xcPts    = parsePoints(p.xcPts);
-      const effXc    = effectiveXc(p);
-      const isCapped = xcPts !== null && effXc < xcPts;
-      const submittedAt = p.submittedAt ? new Date(p.submittedAt).toLocaleString() : '';
+      const track   = parsePoints(p.trackPts);
+      const xc      = parsePoints(p.xcPts);
+      const eff     = effXc(p);
+      const capped  = xc !== null && eff < xc;
+      const subAt   = p.submittedAt ? new Date(p.submittedAt).toLocaleString() : '';
 
-      // Col 1: XContest raw pts, show cap indicator if capped
-      const xcCell = xcPts !== null
-        ? `<span class="pts-xc">${xcPts.toFixed(2)}</span>${isCapped ? `<br><span style="font-size:0.55rem;color:rgba(200,223,240,0.35)">→ capped ${effXc.toFixed(2)}</span>` : ''}`
+      const xcCell = xc !== null
+        ? `<span class="pts-xc">${xc.toFixed(2)}</span>${capped ? `<br><span style="font-size:0.5rem;color:rgba(200,223,240,0.3)">→ capped ${eff.toFixed(2)}</span>` : ''}`
         : `<span class="pts-na">—</span>`;
 
-      // Col 2: Computed XC pts using capped effective value
-      let computedXc = null;
-      if (xcPts !== null && refXc > 0) computedXc = Math.round((effXc / refXc) * 500);
-      const computedCell = computedXc !== null
-        ? `<span class="pts-computed">${computedXc}</span>${isCapped ? ' <span style="font-size:0.5rem;color:rgba(255,180,0,0.5)" title="XContest score capped: fewer waypoints than leader">⚑</span>' : ''}`
+      const compXc  = (refXc > 0 && xc !== null) ? Math.round((eff / refXc) * 500) : null;
+      const compCell = compXc !== null
+        ? `<span class="pts-computed">${compXc}</span>${capped ? ' <span title="Capped: fewer waypoints than leader" style="font-size:0.5rem;color:rgba(255,180,0,0.5)">⚑</span>' : ''}`
         : `<span class="pts-na">—</span>`;
 
-      // Col 3: Waypoint track points
-      const trackCell = trackPts !== null
-        ? `<span class="pts-track">${trackPts}</span>`
-        : `<span class="pts-na">—</span>`;
+      const trackCell = track !== null ? `<span class="pts-track">${track}</span>` : `<span class="pts-na">—</span>`;
 
-      // Col 4: Total = computed XC + track
       let total = null;
-      if (computedXc !== null && trackPts !== null) total = computedXc + trackPts;
-      else if (computedXc !== null) total = computedXc;
-      else if (trackPts !== null) total = trackPts;
-      const totalCell = total !== null
-        ? `<span class="pts-total">${total}</span>`
-        : `<span class="pts-na">—</span>`;
+      if (compXc !== null && track !== null) total = compXc + track;
+      else if (compXc !== null) total = compXc;
+      else if (track !== null) total = track;
+      const totalCell = total !== null ? `<span class="pts-total">${total}</span>` : `<span class="pts-na">—</span>`;
 
-      // XContest link
-      const linkCell = p.xcUrl
-        ? `<a href="${p.xcUrl}" target="_blank">View flight ↗</a>`
-        : `<span class="pts-na">—</span>`;
+      const linkCell = p.xcUrl ? `<a href="${p.xcUrl}" target="_blank">View flight ↗</a>` : `<span class="pts-na">—</span>`;
 
       html += `<tr>
         <td class="rank ${rankClass(i)}">${i+1}</td>
-        <td>
-          <div class="pilot-name">${p.name}</div>
-          <div class="submitted-at">${submittedAt}</div>
-        </td>
+        <td><div class="pilot-name">${p.name}</div><div class="submitted-at">${subAt}</div></td>
         <td class="pts-cell">${xcCell}</td>
-        <td class="pts-cell">${computedCell}</td>
+        <td class="pts-cell">${compCell}</td>
         <td class="pts-cell">${trackCell}</td>
         <td class="pts-cell">${totalCell}</td>
         <td class="xc-link-cell">${linkCell}</td>
@@ -383,4 +252,51 @@ async function renderScores() {
     html += `</tbody></table></div>`;
   }
 
+  container.innerHTML = html;
+}
 
+// ── Event delegation: rename + clear ─────────────────────────────────────────
+document.getElementById('scoresContainer').addEventListener('click', async e => {
+
+  // Rename
+  const nameEl = e.target.closest('.comp-name-edit');
+  if (nameEl) {
+    const current = nameEl.textContent.trim();
+    const newName = prompt('Rename this competition:', current);
+    if (!newName || newName.trim() === current) return;
+    const ids = nameEl.dataset.ids.split('|').filter(Boolean);
+    try {
+      const batch = window.db.batch();
+      ids.forEach(id => batch.update(window.db.collection('scores').doc(id), { compName: newName.trim() }));
+      await batch.commit();
+      nameEl.textContent = newName.trim();
+    } catch(err) { alert('Error renaming: ' + err.message); }
+    return;
+  }
+
+  // Clear
+  const clearEl = e.target.closest('.clear-btn');
+  if (clearEl) {
+    const ids = clearEl.dataset.ids.split('|').filter(Boolean);
+    if (!ids.length) return;
+    if (!confirm(`Delete ${ids.length} score(s) for this competition? This cannot be undone.`)) return;
+    clearEl.textContent = '⏳';
+    clearEl.disabled = true;
+    try {
+      const batch = window.db.batch();
+      ids.forEach(id => batch.delete(window.db.collection('scores').doc(id)));
+      await batch.commit();
+      renderScores();
+    } catch(err) {
+      alert('Error: ' + err.message);
+      clearEl.textContent = '🗑 Clear';
+      clearEl.disabled = false;
+    }
+  }
+});
+
+// ── Start ─────────────────────────────────────────────────────────────────────
+renderScores();
+</script>
+</body>
+</html>
