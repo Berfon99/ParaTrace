@@ -90,6 +90,19 @@
 <main>
   <div class="page-title">🏅 Championship Scores</div>
   <div class="page-sub">AIR³ TDD · Results by competition</div>
+
+  <div style="display:flex;gap:0.6rem;align-items:center;margin-bottom:1.5rem">
+    <select id="champFilter" style="
+      background:rgba(255,255,255,0.05);border:1px solid rgba(0,212,255,0.25);
+      border-radius:6px;padding:0.5rem 0.8rem;color:var(--cloud);
+      font-family:'Space Mono',monospace;font-size:0.65rem;outline:none;cursor:pointer;
+      min-width:250px;
+    ">
+      <option value="">— All championships —</option>
+    </select>
+    <span id="champStatus" style="font-size:0.6rem;color:rgba(200,223,240,0.3)"></span>
+  </div>
+
   <div id="scoresContainer">
     <div class="empty-state"><span class="empty-icon">⏳</span>Loading scores...</div>
   </div>
@@ -113,14 +126,32 @@ function rankClass(i) {
   return i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
 }
 
-// ── Load from Firestore ───────────────────────────────────────────────────────
-async function loadScores() {
-  const snapshot = await window.db.collection('scores').get();
-  return snapshot.docs.map(doc => {
+// ── Load championships into filter dropdown ───────────────────────────────────
+async function loadChampionships() {
+  const sel = document.getElementById('champFilter');
+  try {
+    const snap = await window.db.collection('championships').orderBy('name').get();
+    snap.docs.forEach(doc => {
+      const opt = document.createElement('option');
+      opt.value = doc.id;
+      opt.textContent = doc.data().name;
+      sel.appendChild(opt);
+    });
+  } catch(e) { console.error('loadChampionships:', e); }
+}
+
+// ── Load from Firestore (optionally filtered by championship) ─────────────────
+async function loadScores(champId) {
+  let query = window.db.collection('scores');
+  const snapshot = await query.get();
+  const all = snapshot.docs.map(doc => {
     const d = doc.data();
     d._firestoreId = doc.id;
     return d;
   });
+  // Filter client-side (avoids composite index requirement)
+  if (champId) return all.filter(e => e.championshipId === champId);
+  return all;
 }
 
 // ── Group by compKey (canonical) or compName+date (fallback) ─────────────────
@@ -135,13 +166,13 @@ function groupEntries(entries) {
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
-async function renderScores() {
+async function renderScores(champId) {
   const container = document.getElementById('scoresContainer');
   container.innerHTML = '<div class="empty-state"><span class="empty-icon">⏳</span>Loading scores...</div>';
 
   let entries;
   try {
-    entries = await loadScores();
+    entries = await loadScores(champId);
     console.log('Loaded', entries.length, 'entries:', entries);
   } catch(err) {
     container.innerHTML = `<div class="empty-state"><span class="empty-icon">❌</span>Error loading scores:<br><b>${err.message}</b></div>`;
@@ -295,8 +326,14 @@ document.getElementById('scoresContainer').addEventListener('click', async e => 
   }
 });
 
+// ── Championship filter ──────────────────────────────────────────────────────
+document.getElementById('champFilter').addEventListener('change', function() {
+  renderScores(this.value || null);
+});
+
 // ── Start ─────────────────────────────────────────────────────────────────────
-renderScores();
+loadChampionships();
+renderScores(null);
 </script>
 </body>
 </html>
