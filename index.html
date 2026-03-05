@@ -747,20 +747,26 @@ function analyze() {
     });
   }
 
-  // 3. GOAL must be passed after the LAST validated TP
-  let goalPassed = false;
-  let goalValidatedIdx = -1; // IGC index where goal is validly reached (after all TPs)
+  // 3. GOAL: pilot must enter the cylinder AND land there (checked via exit tolerance below)
+  //    Goal is valid after ANY number of TPs (including 0 TPs after SSS)
+  //    We find the LAST entry into goal cylinder after the last validated TP
+  let goalCylinderReached = false; // pilot entered goal cylinder
+  let goalValidatedIdx = -1;       // IGC index of goal cylinder entry (after last TP)
   if (sssPassed && goal) {
-    // IGC index of last validated TP
     let lastTpIGC = sssIdx;
     tpIdxIGC.forEach(idx => { if (idx > lastTpIGC) lastTpIGC = idx; });
-    for (let i=lastTpIGC; i<igcPoints.length; i++) {
-      if (inCyl(igcPoints[i], goal)) { goalPassed=true; goalValidatedIdx=i; break; }
+    for (let i = lastTpIGC; i < igcPoints.length; i++) {
+      if (inCyl(igcPoints[i], goal)) { goalCylinderReached = true; goalValidatedIdx = i; break; }
     }
   }
 
+  // Goal landing check: pilot must land in/near cylinder (checked in violations below)
+  // goalPassed = true only if cylinder reached AND landing is valid (set after exit check)
+  // For now mark as passed if cylinder reached; violations will block submit if landing bad
+  let goalPassed = goalCylinderReached;
+
   // ── Score ──
-  let total=0, html='', tpCounter=0;
+  let total = 0, html = '', tpCounter = 0;
 
   // SSS
   if (sss) {
@@ -769,7 +775,7 @@ function analyze() {
     if (!sssPassed) html += `<div class="score-item warning" style="font-size:0.58rem"><span>No SSS validated: no points awarded</span></div>`;
   }
 
-  // TPs (n'importe quel ordre)
+  // TPs (any order, any number)
   tps.forEach((tp, ti) => {
     tpCounter++;
     const ok = sssPassed && tpPassed[ti];
@@ -777,10 +783,11 @@ function analyze() {
     html += `<div class="score-item ${ok?'passed':'failed'}"><span>TP${tpCounter} — ${tp.name}</span><span class="score-pts">${ok?'+100':'+0'}</span></div>`;
   });
 
-  // GOAL
+  // GOAL — 200 pts only if pilot entered cylinder AND landed correctly
+  // Landing validity determined below in violation checks; we flag it tentatively
   if (goal) {
-    if (goalPassed) total += 200;
-    html += `<div class="score-item ${goalPassed?'passed':'failed'}"><span>Goal — ${goal.name}</span><span class="score-pts">${goalPassed?'+200':'+0'}</span></div>`;
+    // goalPassed will be set false if landing violation found — scoring updated after checks
+    html += `<div class="score-item goal-score-item ${goalPassed?'passed':'failed'}"><span>Goal — ${goal.name}</span><span class="score-pts goal-pts">${goalPassed?'+200':'+0'}</span></div>`;
   }
 
   window._lastTrackPts = total;
@@ -832,40 +839,58 @@ function analyze() {
     violations.push(`Flight ended at ${fh}:${fm} UTC, after the task deadline of ${dh}:${dm} UTC`);
   }
 
-  // 2. Check flight did not exit goal cylinder after validly reaching it
-  // Tolerance: pilot may exit if landing only (no altitude gain > 50m, max 1km from goal edge)
-  if (goalPassed && goal && goalValidatedIdx !== -1) {
-    // Find first point outside goal after validation
+  // 2. Goal landing validation
+  // Pilot must land in/near cylinder. If they exit, check landing tolerance.
+  // If landing is invalid → goalPassed = false (no 200 pts) + violation blocks submit
+  if (goalCylinderReached && goal && goalValidatedIdx !== -1) {
     let exitIdx = -1;
     for (let i = goalValidatedIdx + 1; i < igcPoints.length; i++) {
       if (!inCyl(igcPoints[i], goal)) { exitIdx = i; break; }
     }
+
     if (exitIdx !== -1) {
+      // Pilot exited — check if it's just a landing
       const altAtExit = igcPoints[exitIdx].alt;
       let maxAltAfterExit = altAtExit;
       let maxDistFromGoal = 0;
-
       for (let i = exitIdx; i < igcPoints.length; i++) {
         if (igcPoints[i].alt > maxAltAfterExit) maxAltAfterExit = igcPoints[i].alt;
         const distFromCenter = haversineM(igcPoints[i].lat, igcPoints[i].lon, goal.lat, goal.lon);
         const distFromEdge = Math.max(0, distFromCenter - goal.radius);
         if (distFromEdge > maxDistFromGoal) maxDistFromGoal = distFromEdge;
       }
-
       const altGain = maxAltAfterExit - altAtExit;
       const landingOk = altGain <= 50 && maxDistFromGoal <= 1000;
 
       if (!landingOk) {
+        // Revoke goal points — pilot did not land at goal
+        goalPassed = false;
         const exitTime = igcPoints[exitIdx].time;
         const eh = Math.floor(exitTime / 3600).toString().padStart(2,'0');
         const em = Math.floor((exitTime % 3600) / 60).toString().padStart(2,'0');
-        if (altGain > 50) {
-          violations.push(`Flight exited Goal cylinder at ${eh}:${em} UTC and gained ${Math.round(altGain)}m altitude (max 50m allowed for landing)`);
-        } else {
-          violations.push(`Flight exited Goal cylinder at ${eh}:${em} UTC and landed ${Math.round(maxDistFromGoal)}m beyond the cylinder edge (max 1000m allowed)`);
-        }
+        // No violation added — pilot simply loses the 200 goal pts (already handled in scoring)
+        // Submit is still allowed
       }
+      // else: landing outside but within tolerance → goalPassed stays true
     }
+    // else: pilot never left cylinder → perfect landing → goalPassed stays true
+
+    // Update score and UI now that we know final goalPassed status
+    if (goalPassed) {
+      total += 200;
+      document.querySelector('.goal-score-item').className = 'score-item passed';
+      document.querySelector('.goal-pts').textContent = '+200';
+    } else {
+      document.querySelector('.goal-score-item').className = 'score-item failed';
+      document.querySelector('.goal-pts').textContent = '+0';
+    }
+    window._lastTrackPts = total;
+    document.getElementById('scoreTotal').textContent = total;
+  } else if (goalCylinderReached && goalPassed) {
+    // No exit at all — perfect landing in cylinder
+    total += 200;
+    window._lastTrackPts = total;
+    document.getElementById('scoreTotal').textContent = total;
   }
 
   // ── Summary card ──
