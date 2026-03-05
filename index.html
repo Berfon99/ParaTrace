@@ -220,7 +220,30 @@
 <div class="main-layout">
   <div class="sidebar">
 
+    <!-- ── CHAMPIONSHIP ── -->
     <div>
+      <div class="section-title">🏆 Championship</div>
+      <div style="display:flex;gap:0.4rem;align-items:center">
+        <select class="champ-select" id="champSelect">
+          <option value="">— Select a championship —</option>
+        </select>
+        <button class="btn-sm" id="champNewBtn" title="New championship">＋</button>
+        <button class="btn-sm" id="champDelBtn" title="Delete championship" style="color:var(--red);border-color:rgba(255,71,87,0.3);background:rgba(255,71,87,0.08)" disabled>🗑</button>
+      </div>
+    </div>
+
+    <!-- ── TASK ── -->
+    <div id="taskSection" style="display:none">
+      <div class="section-title">📋 Task</div>
+      <div id="taskList" style="display:flex;flex-direction:column;gap:0.4rem;margin-bottom:0.5rem">
+        <div class="empty-state">No tasks yet</div>
+      </div>
+      <button class="btn-sm" id="taskNewBtn" style="width:100%">＋ New task (upload .xctsk)</button>
+      <input type="file" accept=".xctsk,.json" id="xctskInputChamp" style="display:none">
+    </div>
+
+    <!-- ── XCTASK (shown only when adding new task or no championship mode) ── -->
+    <div id="xctskSection">
       <div class="section-title">📍 XCTask Task</div>
       <div class="xcontest-section">
         <div class="input-row">
@@ -238,6 +261,7 @@
       </div>
       <div id="xctskBadge"></div>
     </div>
+    </div><!-- end xctskSection -->
 
     <div>
       <div class="section-title">🎯 Waypoints
@@ -371,10 +395,13 @@ document.getElementById('xctskInput').addEventListener('change', e => {
   const reader = new FileReader();
   reader.onload = ev => {
     try {
-      taskData = parseXCTaskJSON(JSON.parse(ev.target.result));
+      const parsedJson = JSON.parse(ev.target.result);
+      taskData = parseXCTaskJSON(parsedJson);
       renderTask(taskData);
       document.getElementById('xctskBadge').innerHTML = `<div class="file-badge">✓ ${file.name}</div>`;
-      localStorage.setItem('paratrace_last_task', JSON.stringify({raw: JSON.parse(ev.target.result), label: file.name}));
+      localStorage.setItem('paratrace_last_task', JSON.stringify({raw: parsedJson, label: file.name}));
+      // Save task to Firestore if championship selected
+      if (currentChampId) saveTaskToFirestore(parsedJson);
       checkEnableAnalyze();
     } catch(err) { alert('Error reading XCTask: ' + err.message); }
   };
@@ -531,6 +558,7 @@ async function loadTaskFromUrl() {
     const taskLabel = document.getElementById('taskUrl').value.trim() || 'URL';
     document.getElementById('xctskBadge').innerHTML = `<div class="file-badge">✓ Loaded from URL</div>`;
     localStorage.setItem('paratrace_last_task', JSON.stringify({raw: json, label: taskLabel}));
+    if (currentChampId) saveTaskToFirestore(json);
     checkEnableAnalyze();
   } else {
     // All proxies failed — show instructions to download manually
@@ -982,8 +1010,20 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
     // DocId based on compKey + pilot name
     const docId = (compKey + '_' + name).toLowerCase().replace(/[^a-z0-9]+/g, '_');
 
-    // Use default competition name (editable in scoreboard after submit)
-    const compName = defaultCompName;
+    // Preserve custom competition name if already set for this group.
+    // Strategy: fetch ANY existing doc that shares the same compKey prefix.
+    // We do this by fetching all scores and filtering client-side (avoids composite index).
+    let compName = defaultCompName;
+    try {
+      const snapshot = await window.db.collection('scores').get();
+      const existing = snapshot.docs.find(d => d.data().compKey === compKey);
+      if (existing) {
+        const existingName = existing.data().compName;
+        if (existingName && existingName !== defaultCompName) {
+          compName = existingName;
+        }
+      }
+    } catch(e) { /* use default if fetch fails */ }
 
     const entry = { name, date, compName, compKey, wpFingerprint, trackPts, xcPts, xcUrl, submittedAt: new Date().toISOString() };
     entry.docId = docId;
@@ -1019,7 +1059,142 @@ function toggleWaypoints() {
   btn.textContent = isHidden ? '−' : '+';
 }
 
+// ── CHAMPIONSHIP & TASK MANAGEMENT ──────────────────────────────────────────
+
+let currentChampId = null;
+let currentTaskId  = null;
+
+// Load all championships into dropdown
+async function loadChampionships() {
+  const sel = document.getElementById('champSelect');
+  sel.innerHTML = '<option value="">— Select a championship —</option>';
+  try {
+    const snap = await window.db.collection('championships').orderBy('name').get();
+    snap.docs.forEach(doc => {
+      const opt = document.createElement('option');
+      opt.value = doc.id;
+      opt.textContent = doc.data().name;
+      sel.appendChild(opt);
+    });
+  } catch(e) { console.error('loadChampionships:', e); }
+}
+
+// Load tasks for selected championship
+async function loadTasks(champId) {
+  const listEl = document.getElementById('taskList');
+  listEl.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    const snap = await window.db.collection('tasks')
+      .where('championshipId', '==', champId).get();
+    if (snap.empty) {
+      listEl.innerHTML = '<div class="empty-state">No tasks yet</div>';
+      return;
+    }
+    // Sort by date desc
+    const tasks = snap.docs.map(d => ({id:d.id, ...d.data()}));
+    tasks.sort((a,b) => (b.date||'').localeCompare(a.date||''));
+    listEl.innerHTML = '';
+    tasks.forEach(task => {
+      const card = document.createElement('div');
+      card.className = 'task-card';
+      card.dataset.taskId = task.id;
+      card.innerHTML = `
+        <div style="flex:1;min-width:0">
+          <div class="task-date">📅 ${task.date || '?'} · ${task.compName || 'Task'}</div>
+          <div class="task-wps">${task.wpSummary || ''}</div>
+        </div>
+        <button class="del-btn" data-task-id="${task.id}" title="Delete task">✕</button>`;
+      card.addEventListener('click', e => {
+        if (e.target.classList.contains('del-btn')) return;
+        selectTask(task);
+        document.querySelectorAll('.task-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+      });
+      card.querySelector('.del-btn').addEventListener('click', async e => {
+        e.stopPropagation();
+        if (!confirm('Delete this task? Submitted scores will remain.')) return;
+        await window.db.collection('tasks').doc(task.id).delete();
+        loadTasks(champId);
+      });
+      listEl.appendChild(card);
+    });
+  } catch(e) {
+    console.error('loadTasks:', e);
+    listEl.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
+  }
+}
+
+// Select a task from Firestore — load xctsk JSON from stored data
+function selectTask(task) {
+  currentTaskId = task.id;
+  if (task.xctskJson) {
+    try {
+      taskData = parseXCTaskJSON(task.xctskJson);
+      renderTask(taskData);
+      document.getElementById('xctskBadge').innerHTML =
+        `<div class="file-badge">✓ ${task.compName || 'Task'} (${task.date})</div>`;
+      checkEnableAnalyze();
+      // Hide the upload section since task is loaded
+      document.getElementById('xctskSection').style.display = 'none';
+    } catch(e) { alert('Error loading task: ' + e.message); }
+  }
+}
+
+// Championship selector change
+document.getElementById('champSelect').addEventListener('change', async function() {
+  currentChampId = this.value || null;
+  currentTaskId  = null;
+  document.getElementById('champDelBtn').disabled = !currentChampId;
+  document.getElementById('taskSection').style.display = currentChampId ? 'block' : 'none';
+  document.getElementById('xctskSection').style.display = currentChampId ? 'none' : 'block';
+  if (currentChampId) loadTasks(currentChampId);
+});
+
+// New championship
+document.getElementById('champNewBtn').addEventListener('click', async () => {
+  const name = prompt('Championship name:');
+  if (!name || !name.trim()) return;
+  try {
+    await window.db.collection('championships').add({
+      name: name.trim(),
+      createdAt: new Date().toISOString()
+    });
+    await loadChampionships();
+    // Auto-select new one
+    const sel = document.getElementById('champSelect');
+    for (const opt of sel.options) {
+      if (opt.textContent === name.trim()) { sel.value = opt.value; sel.dispatchEvent(new Event('change')); break; }
+    }
+  } catch(e) { alert('Error: ' + e.message); }
+});
+
+// Delete championship
+document.getElementById('champDelBtn').addEventListener('click', async () => {
+  if (!currentChampId) return;
+  const champName = document.getElementById('champSelect').selectedOptions[0]?.textContent;
+  if (!confirm(`Delete championship "${champName}"?
+This will NOT delete submitted scores.`)) return;
+  try {
+    await window.db.collection('championships').doc(currentChampId).delete();
+    currentChampId = null;
+    currentTaskId  = null;
+    document.getElementById('taskSection').style.display = 'none';
+    document.getElementById('xctskSection').style.display = 'block';
+    await loadChampionships();
+  } catch(e) { alert('Error: ' + e.message); }
+});
+
+// New task button → show file picker
+document.getElementById('taskNewBtn').addEventListener('click', () => {
+  document.getElementById('xctskSection').style.display = 'block';
+  document.getElementById('xctskInputChamp').click();
+});
+
 // ── RESTORE LAST TASK ON PAGE LOAD ───────────────────────────────────────────
+// Load championships when page starts
+loadChampionships();
+
+
 (function restoreLastTask() {
   try {
     const saved = localStorage.getItem('paratrace_last_task');
@@ -1033,6 +1208,45 @@ function toggleWaypoints() {
     checkEnableAnalyze();
   } catch(e) { /* ignore */ }
 })();
+
+// ── SAVE TASK TO FIRESTORE ────────────────────────────────────────────────────
+async function saveTaskToFirestore(xctskJson) {
+  if (!currentChampId) return;
+  try {
+    // Compute fingerprint
+    const wps = parseXCTaskJSON(xctskJson).waypoints.filter(w => w.type !== 'TAKEOFF');
+    const wpFingerprint = wps.map(w => w.name + ':' + w.radius).sort().join(',');
+    const wpSummary     = wps.map(w => w.name).join(' · ');
+    const compName      = wps.map(w => w.name + '(' + w.radius + 'm)').join(' · ');
+
+    // Check if task already exists for this championship + fingerprint (client-side filter)
+    const snap = await window.db.collection('tasks')
+      .where('championshipId', '==', currentChampId).get();
+    const existing = snap.docs.find(d => d.data().wpFingerprint === wpFingerprint);
+
+    if (existing) {
+      // Task exists — just set currentTaskId
+      currentTaskId = existing.id;
+      console.log('Task already exists:', currentTaskId);
+      loadTasks(currentChampId);
+      return;
+    }
+
+    // New task — save xctsk JSON to Firestore
+    const docRef = await window.db.collection('tasks').add({
+      championshipId: currentChampId,
+      wpFingerprint,
+      wpSummary,
+      compName,
+      xctskJson,
+      date: null, // will be set when first score submitted
+      createdAt: new Date().toISOString()
+    });
+    currentTaskId = docRef.id;
+    console.log('Task saved:', currentTaskId);
+    loadTasks(currentChampId);
+  } catch(e) { console.error('saveTaskToFirestore:', e); }
+}
 
 // ── DRAG & DROP ───────────────────────────────────────────────────────────────
 ['xctskZone','igcZone'].forEach(id => {
