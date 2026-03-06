@@ -418,7 +418,6 @@ document.getElementById('xctskInput').addEventListener('change', e => {
       taskData = parseXCTaskJSON(parsedJson);
       renderTask(taskData);
       document.getElementById('xctskBadge').innerHTML = `<div class="file-badge">✓ ${file.name}</div>`;
-      localStorage.setItem('paratrace_last_task', JSON.stringify({raw: parsedJson, label: file.name}));
       // Save task to Firestore if championship selected
       if (currentChampId) saveTaskToFirestore(parsedJson);
       checkEnableAnalyze();
@@ -576,7 +575,6 @@ async function loadTaskFromUrl() {
     renderTask(taskData);
     const taskLabel = document.getElementById('taskUrl').value.trim() || 'URL';
     document.getElementById('xctskBadge').innerHTML = `<div class="file-badge">✓ Loaded from URL</div>`;
-    localStorage.setItem('paratrace_last_task', JSON.stringify({raw: json, label: taskLabel}));
     if (currentChampId) saveTaskToFirestore(json);
     checkEnableAnalyze();
   } else {
@@ -1214,19 +1212,7 @@ document.getElementById('taskNewBtn').addEventListener('click', () => {
 loadChampionships();
 
 
-(function restoreLastTask() {
-  try {
-    const saved = localStorage.getItem('paratrace_last_task');
-    if (!saved) return;
-    const {raw, label} = JSON.parse(saved);
-    taskData = parseXCTaskJSON(raw);
-    renderTask(taskData);
-    const shortLabel = label.length > 40 ? label.slice(0,37) + '...' : label;
-    document.getElementById('xctskBadge').innerHTML =
-      `<div class="file-badge">✓ ${shortLabel} <span style="opacity:0.5">(restored)</span></div>`;
-    checkEnableAnalyze();
-  } catch(e) { /* ignore */ }
-})();
+// Task restore from localStorage disabled — tasks now loaded from Firestore
 
 // ── SAVE TASK TO FIRESTORE ────────────────────────────────────────────────────
 async function saveTaskToFirestore(xctskJson) {
