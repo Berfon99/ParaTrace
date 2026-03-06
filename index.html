@@ -1047,7 +1047,12 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
       }
     } catch(e) { /* use default if fetch fails */ }
 
-    const entry = { name, date, compName, compKey, wpFingerprint, trackPts, xcPts, xcUrl, submittedAt: new Date().toISOString() };
+    const entry = {
+      name, date, compName, compKey, wpFingerprint, trackPts, xcPts, xcUrl,
+      championshipId: currentChampId || null,
+      taskId: currentTaskId || null,
+      submittedAt: new Date().toISOString()
+    };
     entry.docId = docId;
     console.log('Submitting to Firestore:', docId, entry);
     await window.db.collection('scores').doc(docId).set(entry);
