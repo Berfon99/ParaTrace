@@ -1026,17 +1026,23 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
     // DocId based on compKey + pilot name
     const docId = (compKey + '_' + name).toLowerCase().replace(/[^a-z0-9]+/g, '_');
 
-    // Preserve custom competition name if already set for this group.
-    // Strategy: fetch ANY existing doc that shares the same compKey prefix.
-    // We do this by fetching all scores and filtering client-side (avoids composite index).
+    // Use compName from tasks collection first (renamed by organiser in scoreboard)
+    // Falls back to searching scores, then default waypoint-based name
     let compName = defaultCompName;
     try {
-      const snapshot = await window.db.collection('scores').get();
-      const existing = snapshot.docs.find(d => d.data().compKey === compKey);
-      if (existing) {
-        const existingName = existing.data().compName;
-        if (existingName && existingName !== defaultCompName) {
-          compName = existingName;
+      if (currentTaskId) {
+        const taskDoc = await window.db.collection('tasks').doc(currentTaskId).get();
+        if (taskDoc.exists) {
+          const taskName = taskDoc.data().compName;
+          if (taskName && taskName !== defaultCompName) compName = taskName;
+        }
+      } else {
+        // No taskId — search scores with same compKey
+        const snapshot = await window.db.collection('scores').get();
+        const existing = snapshot.docs.find(d => d.data().compKey === compKey);
+        if (existing) {
+          const existingName = existing.data().compName;
+          if (existingName && existingName !== defaultCompName) compName = existingName;
         }
       }
     } catch(e) { /* use default if fetch fails */ }
