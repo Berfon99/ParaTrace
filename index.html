@@ -250,7 +250,7 @@
     </div>
 
     <!-- ── XCTASK (shown only when adding new task or no championship mode) ── -->
-    <div id="xctskSection">
+    <div id="xctskSection" style="display:none">
       <div class="section-title">📍 XCTask Task</div>
       <div class="xcontest-section">
         <div class="input-row">
@@ -1165,7 +1165,7 @@ document.getElementById('champSelect').addEventListener('change', async function
   currentTaskId  = null;
   document.getElementById('champDelBtn').disabled = !currentChampId;
   document.getElementById('taskSection').style.display = currentChampId ? 'block' : 'none';
-  document.getElementById('xctskSection').style.display = currentChampId ? 'none' : 'block';
+  document.getElementById('xctskSection').style.display = 'none'; // only shown via "New task" button
   if (currentChampId) loadTasks(currentChampId);
 });
 
