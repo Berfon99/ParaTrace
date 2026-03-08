@@ -83,22 +83,23 @@
   </div>
   <div class="nav-btns">
     <a href="rules.html" class="btn-gold">📋 RULES</a>
+    <a href="overall.html" class="btn-blue">🏆 Overall</a>
     <a href="index.html" class="btn-blue">← Back to Analyzer</a>
   </div>
 </header>
 
 <main>
-  <div class="page-title">🏅 Championship Scores</div>
+  <div class="page-title">🏅 AIR³ TDD Cup · Scores</div>
   <div class="page-sub">AIR³ TDD · Results by competition</div>
 
   <div style="display:flex;gap:0.6rem;align-items:center;margin-bottom:1.5rem">
-    <select id="champFilter" style="
+    <select id="cupFilter" style="
       background:rgba(255,255,255,0.05);border:1px solid rgba(0,212,255,0.25);
       border-radius:6px;padding:0.5rem 0.8rem;color:var(--cloud);
       font-family:'Space Mono',monospace;font-size:0.65rem;outline:none;cursor:pointer;
       min-width:250px;
     ">
-      <option value="">— All championships —</option>
+      <option value="">— All AIR³ TDD Cups —</option>
     </select>
     <span id="champStatus" style="font-size:0.6rem;color:rgba(200,223,240,0.3)"></span>
   </div>
@@ -126,21 +127,21 @@ function rankClass(i) {
   return i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
 }
 
-// ── Load championships into filter dropdown ───────────────────────────────────
-async function loadChampionships() {
-  const sel = document.getElementById('champFilter');
+// ── Load cups into filter dropdown ───────────────────────────────────
+async function loadCups() {
+  const sel = document.getElementById('cupFilter');
   try {
-    const snap = await window.db.collection('championships').orderBy('name').get();
+    const snap = await window.db.collection('cups').orderBy('name').get();
     snap.docs.forEach(doc => {
       const opt = document.createElement('option');
       opt.value = doc.id;
       opt.textContent = doc.data().name;
       sel.appendChild(opt);
     });
-  } catch(e) { console.error('loadChampionships:', e); }
+  } catch(e) { console.error('loadCups:', e); }
 }
 
-// ── Load from Firestore (optionally filtered by championship) ─────────────────
+// ── Load from Firestore (optionally filtered by cup) ─────────────────
 async function loadScores(champId) {
   let query = window.db.collection('scores');
   const snapshot = await query.get();
@@ -150,7 +151,7 @@ async function loadScores(champId) {
     return d;
   });
   // Filter client-side (avoids composite index requirement)
-  if (champId) return all.filter(e => e.championshipId === champId);
+  if (champId) return all.filter(e => e.cupId === champId);
   return all;
 }
 
@@ -344,13 +345,13 @@ document.getElementById('scoresContainer').addEventListener('click', async e => 
   }
 });
 
-// ── Championship filter ──────────────────────────────────────────────────────
-document.getElementById('champFilter').addEventListener('change', function() {
+// ── Cup filter ──────────────────────────────────────────────────────
+document.getElementById('cupFilter').addEventListener('change', function() {
   renderScores(this.value || null);
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
-loadChampionships();
+loadCups();
 renderScores(null);
 </script>
 </body>
