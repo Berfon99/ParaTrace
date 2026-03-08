@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIR³ TDD Cup · Overall Standings</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+  :root {
+    --sky:#0a1628;--horizon:#0d2444;--cloud:#e8f4fd;
+    --accent:#00d4ff;--gold:#ffd700;--green:#00cc44;
+    --orange:#ff8c00;--red:#ff4757;--text:#c8dff0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--sky);color:var(--text);font-family:'Space Mono',monospace;min-height:100vh;display:flex;flex-direction:column;}
+  header{background:linear-gradient(135deg,#061018 0%,var(--horizon) 100%);padding:0.9rem 2rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(0,212,255,0.2);box-shadow:0 4px 30px rgba(0,0,0,0.5);}
+  .logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1.4rem;color:var(--accent);}
+  .logo span{color:var(--gold);}
+  .tagline{font-size:0.62rem;color:rgba(200,223,240,0.4);letter-spacing:0.1em;text-transform:uppercase;}
+  .nav-btns{display:flex;gap:0.6rem;align-items:center;}
+  .btn-blue{display:inline-flex;align-items:center;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.25);border-radius:6px;padding:0.45rem 0.9rem;color:var(--accent);text-decoration:none;font-family:'Space Mono',monospace;font-size:0.65rem;font-weight:700;letter-spacing:0.05em;transition:all 0.2s;}
+  .btn-blue:hover{background:rgba(0,212,255,0.2);}
+  .btn-gold{display:inline-flex;align-items:center;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:6px;padding:0.45rem 0.9rem;color:var(--gold);text-decoration:none;font-family:'Space Mono',monospace;font-size:0.65rem;font-weight:700;letter-spacing:0.05em;transition:all 0.2s;}
+  .btn-gold:hover{background:rgba(255,215,0,0.2);}
+  main{flex:1;padding:2rem;max-width:1400px;margin:0 auto;width:100%;}
+  .page-title{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--cloud);margin-bottom:0.3rem;}
+  .page-sub{font-size:0.65rem;color:rgba(200,223,240,0.4);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:1.5rem;}
+  .cup-select{
+    background:rgba(255,255,255,0.05);border:1px solid rgba(0,212,255,0.25);
+    border-radius:6px;padding:0.5rem 0.8rem;color:var(--cloud);
+    font-family:'Space Mono',monospace;font-size:0.65rem;outline:none;cursor:pointer;
+    min-width:280px;
+  }
+  .cup-select option{background:#0d2444;color:var(--cloud);}
+  .cup-select:focus{border-color:var(--accent);}
+  .section-label{
+    font-family:'Syne',sans-serif;font-size:0.65rem;font-weight:700;
+    color:var(--accent);letter-spacing:0.12em;text-transform:uppercase;
+    margin-bottom:0.5rem;
+  }
+  /* Overall table */
+  .overall-table{width:100%;border-collapse:collapse;margin-top:1.5rem;}
+  .overall-table thead tr{background:rgba(0,212,255,0.08);}
+  .overall-table th{
+    font-size:0.58rem;letter-spacing:0.1em;text-transform:uppercase;
+    color:rgba(200,223,240,0.5);padding:0.7rem 0.8rem;text-align:left;
+    border-bottom:1px solid rgba(0,212,255,0.15);font-weight:700;white-space:nowrap;
+  }
+  .overall-table th.right{text-align:right;}
+  .overall-table th.center{text-align:center;}
+  .overall-table tbody tr{border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.15s;}
+  .overall-table tbody tr:hover{background:rgba(255,255,255,0.03);}
+  .overall-table td{padding:0.7rem 0.8rem;font-size:0.72rem;vertical-align:middle;}
+  .overall-table td.right{text-align:right;}
+  .overall-table td.center{text-align:center;}
+  .rank{font-family:'Syne',sans-serif;font-weight:800;font-size:0.95rem;color:rgba(200,223,240,0.25);width:36px;}
+  .rank.gold{color:var(--gold);}
+  .rank.silver{color:#aaa;}
+  .rank.bronze{color:#cd7f32;}
+  .pilot-name{font-family:'Syne',sans-serif;font-weight:700;font-size:0.85rem;color:var(--cloud);}
+  .pts-total{font-family:'Syne',sans-serif;font-weight:800;font-size:1rem;color:var(--gold);}
+  .pts-task{font-family:'Syne',sans-serif;font-weight:700;font-size:0.85rem;color:var(--accent);}
+  .pts-na{color:rgba(200,223,240,0.15);font-size:0.65rem;}
+  .task-header{font-size:0.6rem;color:rgba(200,223,240,0.6);line-height:1.4;}
+  .task-header-name{font-family:'Syne',sans-serif;font-weight:700;color:var(--cloud);font-size:0.65rem;}
+  .empty-state{text-align:center;padding:4rem 2rem;color:rgba(200,223,240,0.3);font-size:0.8rem;line-height:2;}
+  .empty-icon{font-size:3rem;display:block;margin-bottom:1rem;opacity:0.4;}
+  footer{text-align:center;padding:1.5rem;border-top:1px solid rgba(0,212,255,0.08);font-size:0.65rem;color:rgba(200,223,240,0.2);}
+</style>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+  firebase.initializeApp({
+    apiKey:"AIzaSyAo6MSWOQXVQuCuluk5hhJY36TGvNqc8L8",
+    authDomain:"air3tddanalyser.firebaseapp.com",
+    projectId:"air3tddanalyser",
+    storageBucket:"air3tddanalyser.firebasestorage.app",
+    messagingSenderId:"40508185051",
+    appId:"1:40508185051:web:6b7c9069e4d4f94e4f2ffe"
+  });
+  window.db = firebase.firestore();
+</script>
+</head>
+<body>
+
+<header>
+  <div>
+    <a href="https://www.fly-air3.com/" target="_blank" style="text-decoration:none">
+      <div class="logo">AIR³ TDD<span> Task Analyser</span></div>
+    </a>
+    <div class="tagline">powered by Snowy</div>
+  </div>
+  <div class="nav-btns">
+    <a href="rules.html" class="btn-gold">📋 RULES</a>
+    <a href="score.html" class="btn-blue">🏅 Scores</a>
+    <a href="index.html" class="btn-blue">← Analyzer</a>
+  </div>
+</header>
+
+<main>
+  <div class="page-title">🏆 Overall Standings</div>
+  <div class="page-sub">AIR³ TDD Cup · Total points across all tasks</div>
+
+  <div style="margin-bottom:1.5rem">
+    <div class="section-label">AIR³ TDD Cup</div>
+    <select id="cupSelect" class="cup-select">
+      <option value="">— Select your AIR³ TDD Cup —</option>
+    </select>
+  </div>
+
+  <div id="overallContainer">
+    <div class="empty-state">
+      <span class="empty-icon">🏆</span>
+      Select a Cup above to see overall standings.
+    </div>
+  </div>
+</main>
+
+<footer>
+  ⚡ Powered by Snowy &nbsp;·&nbsp;
+  <a href="https://www.fly-air3.com/" target="_blank" style="color:inherit;text-decoration:none">AIR³ Paragliding</a>
+</footer>
+
+<script>
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function parsePoints(val) {
+  if (val === null || val === undefined || val === '' || val === '—') return null;
+  if (typeof val === 'number') return isNaN(val) ? null : val;
+  const n = parseFloat(String(val).replace(/[^0-9.]/g, ''));
+  return isNaN(n) ? null : n;
+}
+function rankClass(i) {
+  return i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+}
+
+// ── Load cups into dropdown ───────────────────────────────────────────────────
+async function loadCups() {
+  const sel = document.getElementById('cupSelect');
+  try {
+    const snap = await window.db.collection('cups').orderBy('name').get();
+    snap.docs.forEach(doc => {
+      const opt = document.createElement('option');
+      opt.value = doc.id;
+      opt.textContent = doc.data().name;
+      sel.appendChild(opt);
+    });
+    // Auto-select if only one cup
+    if (snap.docs.length === 1) {
+      sel.value = snap.docs[0].id;
+      sel.dispatchEvent(new Event('change'));
+    }
+  } catch(e) { console.error('loadCups:', e); }
+}
+
+// ── Compute overall standings for a cup ───────────────────────────────────────
+async function loadOverall(cupId) {
+  const container = document.getElementById('overallContainer');
+  container.innerHTML = '<div class="empty-state"><span class="empty-icon">⏳</span>Loading...</div>';
+
+  try {
+    // 1. Load all scores for this cup
+    const scoresSnap = await window.db.collection('scores').get();
+    const allScores = scoresSnap.docs.map(d => ({...d.data(), _id: d.id}));
+    const cupScores = allScores.filter(s => s.cupId === cupId);
+
+    if (!cupScores.length) {
+      container.innerHTML = '<div class="empty-state"><span class="empty-icon">🪂</span>No scores submitted for this Cup yet.</div>';
+      return;
+    }
+
+    // 2. Load tasks for this cup
+    const tasksSnap = await window.db.collection('tasks')
+      .where('cupId', '==', cupId).get();
+    const tasks = tasksSnap.docs.map(d => ({id: d.id, ...d.data()}));
+
+    // 3. Group scores by task (compKey)
+    // Build task list from scores if tasks collection is empty
+    const taskMap = {}; // compKey → { taskId, compName, date, scores[] }
+    cupScores.forEach(s => {
+      const key = s.compKey || s.taskId || 'unknown';
+      if (!taskMap[key]) {
+        // Find matching task doc
+        const taskDoc = tasks.find(t =>
+          t.id === s.taskId ||
+          (s.compKey && s.compKey.split('||')[1] === t.wpFingerprint)
+        );
+        taskMap[key] = {
+          taskId: s.taskId || key,
+          compName: taskDoc?.compName || s.compName || 'Task',
+          date: s.date || taskDoc?.date || '?',
+          scores: []
+        };
+      }
+      taskMap[key].scores.push(s);
+    });
+
+    // Sort tasks by date
+    const sortedTasks = Object.values(taskMap).sort((a, b) =>
+      (a.date || '').localeCompare(b.date || '')
+    );
+
+    // 4. For each task, compute scored points per pilot
+    // (same logic as score.html: best XC among top trackPts = 500, capped)
+    const taskResults = sortedTasks.map(task => {
+      const pilots = task.scores;
+      const maxTrack = Math.max(0, ...pilots.map(p => parsePoints(p.trackPts) || 0));
+      const topPilots = pilots.filter(p => (parsePoints(p.trackPts) || 0) === maxTrack);
+      const refXc = Math.max(0, ...topPilots.map(p => parsePoints(p.xcPts) || 0));
+
+      function effXc(p) {
+        const xc = parsePoints(p.xcPts) || 0;
+        const tr = parsePoints(p.trackPts) || 0;
+        return tr < maxTrack ? Math.min(xc, refXc) : xc;
+      }
+
+      const pilotScores = {};
+      pilots.forEach(p => {
+        const track = parsePoints(p.trackPts) || 0;
+        const compXc = refXc > 0 ? Math.round((effXc(p) / refXc) * 500) : 0;
+        pilotScores[p.name] = track + compXc;
+      });
+
+      return {
+        compName: task.compName,
+        date: task.date,
+        pilotScores
+      };
+    });
+
+    // 5. Collect all pilots
+    const allPilots = [...new Set(cupScores.map(s => s.name))].sort();
+
+    // 6. Compute totals per pilot
+    const pilotTotals = allPilots.map(name => {
+      const taskPts = taskResults.map(t => t.pilotScores[name] ?? null);
+      const total = taskPts.reduce((sum, pts) => sum + (pts || 0), 0);
+      return { name, taskPts, total };
+    });
+
+    // Sort by total desc
+    pilotTotals.sort((a, b) => b.total - a.total);
+
+    // 7. Render table
+    let html = '<table class="overall-table"><thead><tr>';
+    html += '<th>#</th><th>Pilot</th>';
+    taskResults.forEach((t, i) => {
+      html += `<th class="center">
+        <div class="task-header-name">${t.compName}</div>
+        <div class="task-header">📅 ${t.date}</div>
+      </th>`;
+    });
+    html += '<th class="right">Total</th></tr></thead><tbody>';
+
+    pilotTotals.forEach((pilot, i) => {
+      html += `<tr>
+        <td class="rank ${rankClass(i)}">${i + 1}</td>
+        <td><div class="pilot-name">${pilot.name}</div></td>`;
+      pilot.taskPts.forEach(pts => {
+        html += `<td class="center">${pts !== null
+          ? `<span class="pts-task">${pts}</span>`
+          : `<span class="pts-na">—</span>`}</td>`;
+      });
+      html += `<td class="right"><span class="pts-total">${pilot.total}</span></td></tr>`;
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+
+  } catch(e) {
+    console.error('loadOverall:', e);
+    container.innerHTML = `<div class="empty-state"><span class="empty-icon">❌</span>Error: ${e.message}</div>`;
+  }
+}
+
+// ── Events ────────────────────────────────────────────────────────────────────
+document.getElementById('cupSelect').addEventListener('change', function() {
+  if (this.value) loadOverall(this.value);
+  else document.getElementById('overallContainer').innerHTML =
+    '<div class="empty-state"><span class="empty-icon">🏆</span>Select a Cup above to see overall standings.</div>';
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadCups();
+</script>
+</body>
+</html>
